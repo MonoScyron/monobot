@@ -8,6 +8,8 @@ from discord.ext import commands
 env = dotenv.dotenv_values()
 command_prefix = env.get('PREFIX')
 owner_id = env.get('OWNER_ID')
+explode = int(env.get('EXPLODE'))
+explode_more = int(env.get('EXPLODE_MORE'))
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -48,14 +50,14 @@ async def on_message(ctx):
 
 @bot.command(aliases=["~love"])
 async def botlove(ctx: discord.ext.commands.Context, *, msg=''):
-    if ctx.message.author.id == 576333021641310211:
+    if ctx.message.author.id == explode:
         if random.random() < 0.05:
             love = ['💕', '💝', '💖']
             await ctx.message.add_reaction(random.choice(love))
         else:
             await ctx.message.add_reaction('<:Explode:1207534077838626836>')
 
-    elif ctx.message.author.id == 350987269433327637:
+    elif ctx.message.author.id == explode_more:
         if random.random() < 0.5:
             await ctx.message.add_reaction('<:Explode:1207534077838626836>')
         else:
