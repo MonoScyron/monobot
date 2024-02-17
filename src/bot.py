@@ -146,7 +146,7 @@ async def botroll(ctx: discord.ext.commands.Context, *, msg=""):
             if not twist:
                 fstr = f'{ctx.message.author.mention}, you rolled {dice}d with cut of {cut} for a **{wildsea_dict[fval]}**{message}.'
             else:
-                fstr = f'{ctx.message.author.mention}, you rolled {dice}d with cut of {cut} for a **Twist**and a **{wildsea_dict[fval]}**{message}.'
+                fstr = f'{ctx.message.author.mention}, you rolled {dice}d with cut of {cut} for a **Twist** and a **{wildsea_dict[fval]}**{message}.'
 
             cut_count = 0
             fstr += f' [`{dice}d`: {fval}; '
@@ -164,7 +164,7 @@ async def botroll(ctx: discord.ext.commands.Context, *, msg=""):
             if not twist:
                 fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **{wildsea_dict[fval]}**{message}.'
             else:
-                fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **Twist**and a **{wildsea_dict[fval]}**{message}.'
+                fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **Twist** and a **{wildsea_dict[fval]}**{message}.'
 
             fstr += f' [`{dice}d`: {fval}; '
             for x in sorted(pool, reverse=True):
