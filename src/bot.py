@@ -38,7 +38,7 @@ async def on_message(ctx):
             cut = ''
             msg = ''
             if "#" in ctx.content:
-                msg = " #" + ctx.content.split('#')[1].strip()
+                msg = "#" + ctx.content.split('#')[1].strip()
                 ctx.content = ctx.content.split('#')[0].strip()
             if "-" in ctx.content:
                 cut = " -" + ctx.content.split('-')[1].strip()
@@ -107,18 +107,17 @@ def has_duplicates(lst):
 @bot.command(aliases=["~rollwildsea"])
 async def botroll(ctx: discord.ext.commands.Context, *, msg=""):
     try:
+        message = ''
+        if '#' in msg:
+            message = f"; roll for `{msg.split('#')[1]}`"
+            msg = msg.split('#')[0]
+        print(msg, message)
         split = msg.split(" ")
         dice = int(split[0])
         cut = 0
-        message = ''
         for i in range(1, len(split)):
             if '-' == split[i][0]:
                 cut = int(split[i][1:])
-            elif "#" == split[i][0]:
-                message = f"; roll for `{split[i][1:]}`"
-            else:
-                await ctx.send(f'well this wasnt supposed to happen: {split}')
-                return
     except ValueError:
         await ctx.send("that doesnt look like a valid integer")
         return
