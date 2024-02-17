@@ -129,9 +129,9 @@ async def botroll(ctx: discord.ext.commands.Context, *, msg=""):
     if cut > 0:
         if dice - cut <= 0:
             if random.random() < .1:
-                await ctx.send(f'{ctx.message.author.mention}, you cut all your dice for a {wildsea_dict[1]} like the fool you are')
+                await ctx.send(f'{ctx.message.author.mention}, you cut all your dice for a **{wildsea_dict[1]}** like the fool you are')
             else:
-                await ctx.send(f'{ctx.message.author.mention}, you cut all your dice for a {wildsea_dict[1]}')
+                await ctx.send(f'{ctx.message.author.mention}, you cut all your dice for a **{wildsea_dict[1]}**')
             return
 
     if dice > 0:
