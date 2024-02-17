@@ -7,6 +7,7 @@ from discord.ext import commands
 
 env = dotenv.dotenv_values()
 command_prefix = env.get('PREFIX')
+owner_id = env.get('OWNER_ID')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -33,7 +34,7 @@ async def on_ready():
 async def on_message(ctx):
     if ctx.content and ctx.content[0] == command_prefix:
         if re.match(r'~-?\d+[dD]( ?-\d*)?($| ?#.*)', ctx.content):
-            newcontent = "rollwildsea " + ctx.content[1:].lower().split("d")[0]
+            newcontent = "~rollwildsea " + ctx.content[1:].lower().split("d")[0]
             cut = ''
             msg = ''
             if "#" in ctx.content:
@@ -42,7 +43,7 @@ async def on_message(ctx):
             if "-" in ctx.content:
                 cut = " -" + ctx.content.split('-')[1].strip()
             ctx.content = newcontent + cut + msg
-            await bot.process_commands(ctx)
+        await bot.process_commands(ctx)
 
 
 def has_duplicates(lst):
@@ -54,7 +55,31 @@ def has_duplicates(lst):
     return False
 
 
-@bot.command(aliases=["rollwildsea"])
+@bot.command(aliases=["~explode"])
+async def botexplode(ctx: discord.ext.commands.Context, *, msg=""):
+    count = 1
+    if len(msg) >= 1:
+        count = int(msg)
+
+    if count > 30:
+        await ctx.send('i do not permit you to blow up the server')
+        count = 30
+
+    message = ''
+    limit = 0
+    for _ in range(count):
+        message += '<:Explode:1207534077838626836> '
+        limit += 1
+        if limit >= 30:
+            await ctx.send(message)
+            message = ''
+            limit = 0
+
+    if len(message) > 0:
+        await ctx.send(message)
+
+
+@bot.command(aliases=["~rollwildsea"])
 async def botroll(ctx: discord.ext.commands.Context, *, msg=""):
     try:
         split = msg.split(" ")
