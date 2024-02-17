@@ -59,7 +59,7 @@ async def botlove(ctx: discord.ext.commands.Context, *, msg=''):
         if random.random() < 0.5:
             await ctx.message.add_reaction('<:Explode:1207534077838626836>')
         else:
-            love = ['💕', '💝', '💖']
+            love = ['⭐', '✨', '💕', '💝', '💖']
             for lv in love:
                 await ctx.message.add_reaction(random.choice(lv))
 
