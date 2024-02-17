@@ -46,13 +46,29 @@ async def on_message(ctx):
         await bot.process_commands(ctx)
 
 
-def has_duplicates(lst):
-    counts = {}
-    for num in lst:
-        if num in counts:
-            return True
-        counts[num] = 1
-    return False
+@bot.command(aliases=["~love"])
+async def botlove(ctx: discord.ext.commands.Context, *, msg=''):
+    if ctx.message.author.id == 576333021641310211:
+        if random.random() < 0.05:
+            love = ['💕', '💝', '💖']
+            await ctx.message.add_reaction(random.choice(love))
+        else:
+            await ctx.message.add_reaction('<:Explode:1207534077838626836>')
+
+    elif ctx.message.author.id == 350987269433327637:
+        if random.random() < 0.5:
+            await ctx.message.add_reaction('<:Explode:1207534077838626836>')
+        else:
+            love = ['💕', '💝', '💖']
+            for lv in love:
+                await ctx.message.add_reaction(random.choice(lv))
+
+    else:
+        if random.random() < 0.05:
+            await ctx.message.add_reaction('<:Explode:1207534077838626836>')
+        else:
+            love = ['💕', '💝', '💖']
+            await ctx.message.add_reaction(random.choice(love))
 
 
 @bot.command(aliases=["~explode"])
@@ -77,6 +93,15 @@ async def botexplode(ctx: discord.ext.commands.Context, *, msg=""):
 
     if len(message) > 0:
         await ctx.send(message)
+
+
+def has_duplicates(lst):
+    counts = {}
+    for num in lst:
+        if num in counts:
+            return True
+        counts[num] = 1
+    return False
 
 
 @bot.command(aliases=["~rollwildsea"])
