@@ -32,15 +32,17 @@ async def on_ready():
 @bot.event
 async def on_message(ctx):
     if ctx.content and ctx.content[0] == command_prefix:
-        print(f'{ctx.content}')
-        if re.match(r'~-?\d+[dD]( ?c\d*)?($| ?#.*)', ctx.content):
+        if re.match(r'~-?\d+[dD]( ?-\d*)?($| ?#.*)', ctx.content):
             newcontent = "rollwildsea " + ctx.content[1:].lower().split("d")[0]
-            if "c" in ctx.content:
-                newcontent += " c" + ctx.content.split('c')[1].split(" ")[0]
+            cut = ''
+            msg = ''
             if "#" in ctx.content:
-                newcontent += " #" + ctx.content.split('#')[1]
-            ctx.content = newcontent
-        await bot.process_commands(ctx)
+                msg = " #" + ctx.content.split('#')[1].strip()
+                ctx.content = ctx.content.split('#')[0].strip()
+            if "-" in ctx.content:
+                cut = " -" + ctx.content.split('-')[1].strip()
+            ctx.content = newcontent + cut + msg
+            await bot.process_commands(ctx)
 
 
 def has_duplicates(lst):
@@ -55,66 +57,83 @@ def has_duplicates(lst):
 @bot.command(aliases=["rollwildsea"])
 async def botroll(ctx: discord.ext.commands.Context, *, msg=""):
     try:
-        print(msg)
         split = msg.split(" ")
         dice = int(split[0])
         cut = 0
-        if len(split) > 2:
-            cut = int(split[1].split("c")[1])
+        message = ''
+        for i in range(1, len(split)):
+            if '-' == split[i][0]:
+                cut = int(split[i][1:])
+            elif "#" == split[i][0]:
+                message = f"; roll for `{split[i][1:]}`"
+            else:
+                await ctx.send(f'well this wasnt supposed to happen: {split}')
+                return
     except ValueError:
-        await ctx.send("That doesn't look like a valid pool to me.")
+        await ctx.send("that doesnt look like a valid integer")
         return
-
-    message = msg.split("#")
-    if len(message) > 1:
-        message = message[1]
-        if message and message[0] == " ":
-            message = message[1:]
-        message = f"; roll for `{message}`"
-    else:
-        message = ""
 
     if dice and dice > 100:
-        await ctx.send('Due to statutory limitations on bot labour, I can only roll 100 dice at a time.')
+        await ctx.send('in what world do you need to roll that many dice?')
         return
 
-    roll = dice - cut
+    if cut > 0:
+        if dice - cut <= 0:
+            if random.random() < .1:
+                await ctx.send(f'{ctx.message.author.mention}, you cut all your dice for a {wildsea_dict[1]} like the fool you are')
+            else:
+                await ctx.send(f'{ctx.message.author.mention}, you cut all your dice for a {wildsea_dict[1]}')
+            return
 
-    if roll > 0:
-        pool = [random.randint(1, 6) for _ in range(roll)]
-
-        fval = max(pool)
-        twist = has_duplicates(pool)
+    if dice > 0:
+        pool = [random.randint(1, 6) for _ in range(dice)]
 
         if cut > 0:
+            pool = sorted(pool, reverse=True)
+            fval = pool[cut]
+            twist = has_duplicates(pool[cut:])
+
             if not twist:
                 fstr = f'{ctx.message.author.mention}, you rolled {dice}d with cut of {cut} for a **{wildsea_dict[fval]}**{message}.'
             else:
-                fstr = f'{ctx.message.author.mention}, you rolled {roll}d for a **Twist** and a **{wildsea_dict[fval]}**{message}.'
+                fstr = f'{ctx.message.author.mention}, you rolled {dice}d with cut of {cut} for a **Twist**and a **{wildsea_dict[fval]}**{message}.'
+
+            cut_count = 0
+            fstr += f' [`{dice}d`: {fval}; '
+            for x in pool:
+                if cut_count < cut:
+                    fstr += f'~~`{x}`~~, '
+                    cut_count += 1
+                else:
+                    fstr += f'`{x}`, '
+            fstr = fstr[:-2] + "]"
         else:
+            fval = max(pool)
+            twist = has_duplicates(pool)
+
             if not twist:
                 fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **{wildsea_dict[fval]}**{message}.'
             else:
-                fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **Twist** and a **{wildsea_dict[fval]}**{message}.'
+                fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **Twist**and a **{wildsea_dict[fval]}**{message}.'
 
-        fstr += f' [`{roll}d`: {fval}; '
-        for x in sorted(pool, reverse=True):
-            fstr += f'`{x}`, '
-        fstr = fstr[:-2] + "]"
+            fstr += f' [`{dice}d`: {fval}; '
+            for x in sorted(pool, reverse=True):
+                fstr += f'`{x}`, '
+            fstr = fstr[:-2] + "]"
     else:
-        pool = [random.randint(1, 6) for _ in range(2 - roll)]
+        pool = [random.randint(1, 6) for _ in range(2 - dice)]
         fval = min(pool)
-        fstr = f'{ctx.message.author.mention}, you rolled {roll}d for a **{wildsea_dict[fval]}**{message}.'
-        fstr += f' [`{roll}d`: {fval}; `{sorted(pool)[0]}`, '
+        fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **{wildsea_dict[fval]}**{message}.'
+        fstr += f' [`{dice}d`: {fval}; `{sorted(pool)[0]}`, '
         for x in sorted(pool)[1:]:
             fstr += f'~~`{x}`~~, '
         fstr = fstr[:-2] + "]"
 
-    if roll > 7:
+    if dice - cut > 7:
         if fval == 6:
-            fstr += "\nDid you really expect anything different?"
+            fstr += "\ndid you really expect anything different?"
         elif fval < 4:
-            fstr += "\n...That's kind of impressive, really."
+            fstr += "\n...pretty fucking impressive, actually."
     await ctx.send(fstr)
 
 
