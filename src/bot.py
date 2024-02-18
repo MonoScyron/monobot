@@ -63,6 +63,11 @@ async def botpee(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.send(file=discord.File(pfp_bytes, filename='gun.png'))
 
 
+@bot.command(aliases=['~a'])
+async def bota(ctx: discord.ext.commands.Context, *, msg=''):
+    await ctx.send(f'<@{owner_id}>')
+
+
 @bot.command(aliases=['~gun'])
 async def bothate(ctx: discord.ext.commands.Context, *, msg=''):
     author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
