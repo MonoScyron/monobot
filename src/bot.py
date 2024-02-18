@@ -1,3 +1,6 @@
+import io
+
+from PIL import Image, ImageDraw, ImageFont
 import random
 import re
 
@@ -46,6 +49,31 @@ async def on_message(ctx):
                 cut = " -" + ctx.content.split('-')[1].strip()
             ctx.content = newcontent + cut + msg
         await bot.process_commands(ctx)
+
+
+@bot.command(aliases=['~pee'])
+async def botpee(ctx: discord.ext.commands.Context, *, msg=''):
+    author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
+    pfp = Image.open(io.BytesIO(author_pfp)).resize((200, 200))
+    mask = Image.new('RGBA', (200, 200), (255, 255, 0, 100))
+    pfp.paste(mask, (0, 0), mask)
+    pfp_bytes = io.BytesIO()
+    pfp.save(pfp_bytes, format="PNG")
+    pfp_bytes.seek(0)
+    await ctx.send(file=discord.File(pfp_bytes, filename='gun.png'))
+
+
+@bot.command(aliases=['~gun'])
+async def bothate(ctx: discord.ext.commands.Context, *, msg=''):
+    author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
+    gun = Image.open('./img/gun.png').resize((150, 150))
+    pfp = Image.open(io.BytesIO(author_pfp)).resize((200, 200))
+    pfp.paste(gun, (90, 50), gun)
+
+    pfp_bytes = io.BytesIO()
+    pfp.save(pfp_bytes, format="PNG")
+    pfp_bytes.seek(0)
+    await ctx.send(file=discord.File(pfp_bytes, filename='gun.png'))
 
 
 @bot.command(aliases=["~love"])
