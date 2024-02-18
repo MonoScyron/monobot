@@ -147,6 +147,36 @@ def has_duplicates(lst):
     return False
 
 
+@bot.command(aliases=["~hate"])
+async def bothate(ctx: discord.ext.commands.Context, *, msg=""):
+    pool = [random.randint(1, 3) for _ in range(10)]
+
+    pool = sorted(pool, reverse=True)
+    fval = max(pool)
+    twist = has_duplicates(pool)
+
+    if not twist:
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{wildsea_dict[fval]}**.'
+    else:
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **Twist** and a **{wildsea_dict[fval]}**.'
+
+    fstr += f' [`10d`: {fval}; '
+    for x in pool:
+        fstr += f'`{x}`, '
+    fstr = fstr[:-2] + "]"
+
+    hate = [
+        '\neat shit!!!!!',
+        '\nexplode???',
+        '\n>:3',
+        '\nLOL',
+        '\nlmao'
+    ]
+    fstr += random.choice(hate)
+
+    await ctx.send(fstr)
+
+
 @bot.command(aliases=["~rollwildsea"])
 async def botroll(ctx: discord.ext.commands.Context, *, msg=""):
     try:
