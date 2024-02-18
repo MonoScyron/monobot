@@ -1,12 +1,13 @@
 import io
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import random
 import re
 
 import discord
 import dotenv
 from discord.ext import commands
+from discord.ext.commands import CommandOnCooldown
 
 env = dotenv.dotenv_values()
 command_prefix = env.get('PREFIX')
@@ -64,8 +65,15 @@ async def botpee(ctx: discord.ext.commands.Context, *, msg=''):
 
 
 @bot.command(aliases=['~a'])
+@commands.cooldown(5, 60)
 async def bota(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.send(f'<@{owner_id}>')
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, CommandOnCooldown):
+        await ctx.send(f'<:Explode:1207534077838626836>')
 
 
 @bot.command(aliases=['~gun'])
