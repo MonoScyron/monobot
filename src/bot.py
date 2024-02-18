@@ -77,7 +77,7 @@ async def on_command_error(ctx, error):
 
 
 @bot.command(aliases=['~gun'])
-async def bothate(ctx: discord.ext.commands.Context, *, msg=''):
+async def botgun(ctx: discord.ext.commands.Context, *, msg=''):
     author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
     gun = Image.open('./img/gun.png').resize((150, 150))
     pfp = Image.open(io.BytesIO(author_pfp)).resize((200, 200))
