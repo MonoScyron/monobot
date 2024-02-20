@@ -230,7 +230,6 @@ async def botroll(ctx: discord.ext.commands.Context, *, msg=""):
         if '#' in msg:
             message = f"; roll for `{msg.split('#')[1]}`"
             msg = msg.split('#')[0]
-        print(msg, message)
         split = msg.split(" ")
         dice = int(split[0])
         cut = 0
