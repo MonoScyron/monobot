@@ -52,6 +52,12 @@ async def on_message(ctx):
         await bot.process_commands(ctx)
 
 
+@bot.command(aliases=['~qp'])
+async def botqp(ctx: discord.ext.commands.Context, *, msg=''):
+    await ctx.message.add_reaction("✅")
+    await ctx.message.add_reaction("❌")
+
+
 @bot.command(aliases=['~pee'])
 async def botpee(ctx: discord.ext.commands.Context, *, msg=''):
     author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
