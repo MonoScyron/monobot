@@ -52,7 +52,42 @@ async def on_message(ctx):
         await bot.process_commands(ctx)
 
 
-@bot.command(aliases=['~qp'])
+num_to_word = {
+    1: '1️⃣',
+    2: '2️⃣',
+    3: '3️⃣',
+    4: '4️⃣',
+    5: '5️⃣',
+    6: '6️⃣',
+    7: '7️⃣',
+    8: '8️⃣',
+    9: '9️⃣'
+}
+
+
+@bot.command(aliases=['~p', '~poll'])
+async def botpoll(ctx: discord.ext.commands.Context, *, msg=''):
+    options = [s.strip() for s in msg.strip().split('-') if len(s) > 0]
+    if len(options) > 9:
+        await ctx.send('do you really need that many options in a poll?')
+        return
+    if len(options) < 1:
+        await ctx.send('you gonna put any options in that poll? (ps. you can add them with a "-")')
+        return
+    if len(options) == 1:
+        await ctx.send('a poll with only one option is kinda boring isn\'t it? (ps. you can add more with a "-")')
+        return
+
+    message = ''
+    for i in range(len(options)):
+        message += f'{num_to_word[i + 1]}: {options[i]}\n'
+    sent_msg = await ctx.send(message)
+
+    for i in range(len(options)):
+        await sent_msg.add_reaction(f'{num_to_word[i + 1]}')
+
+
+@bot.command(aliases=['~qp', '~quickpoll'])
 async def botqp(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.message.add_reaction("✅")
     await ctx.message.add_reaction("❌")
@@ -71,7 +106,7 @@ async def botpee(ctx: discord.ext.commands.Context, *, msg=''):
 
 
 @bot.command(aliases=['~a'])
-@commands.cooldown(5, 60)
+@commands.cooldown(5, 300)
 async def bota(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.send(f'<@{owner_id}>')
 
@@ -153,10 +188,19 @@ def has_duplicates(lst):
     return False
 
 
+weights = [1 / (i ** 3) for i in range(1, 7)]
+hate = [
+    '\neat shit!!!!!',
+    '\nexplode???',
+    '\n>:3',
+    '\nLOL',
+    '\nlmao'
+]
+
+
 @bot.command(aliases=["~hate"])
 async def bothate(ctx: discord.ext.commands.Context, *, msg=""):
-    pool = [random.randint(1, 3) for _ in range(10)]
-
+    pool = [random.choices(range(1, 7), weights=weights)[0] for _ in range(10)]
     pool = sorted(pool, reverse=True)
     fval = max(pool)
     twist = has_duplicates(pool)
@@ -171,14 +215,10 @@ async def bothate(ctx: discord.ext.commands.Context, *, msg=""):
         fstr += f'`{x}`, '
     fstr = fstr[:-2] + "]"
 
-    hate = [
-        '\neat shit!!!!!',
-        '\nexplode???',
-        '\n>:3',
-        '\nLOL',
-        '\nlmao'
-    ]
-    fstr += random.choice(hate)
+    if fval <= 3:
+        fstr += random.choice(hate)
+    elif fval == 6:
+        fstr += '\ndamn...'
 
     await ctx.send(fstr)
 
@@ -256,12 +296,6 @@ async def botroll(ctx: discord.ext.commands.Context, *, msg=""):
         for x in sorted(pool)[1:]:
             fstr += f'~~`{x}`~~, '
         fstr = fstr[:-2] + "]"
-
-    if dice - cut > 7:
-        if fval == 6:
-            fstr += "\ndid you really expect anything different?"
-        elif fval < 4:
-            fstr += "\n...pretty fucking impressive, actually."
     await ctx.send(fstr)
 
 
