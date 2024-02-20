@@ -188,7 +188,7 @@ def has_duplicates(lst):
     return False
 
 
-weights = [1 / (i ** 3) for i in range(1, 7)]
+weights = [1, .5, .25, .05, .025, .005]
 hate = [
     '\neat shit!!!!!',
     '\nexplode???',
