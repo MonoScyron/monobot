@@ -52,6 +52,17 @@ async def on_message(ctx):
         await bot.process_commands(ctx)
 
 
+@bot.command(aliases=['~'])
+async def botnodice(ctx: discord.ext.commands.Context, *, msg=''):
+    choice = [
+        'got dice?',
+        'gonna roll anything there buddy?',
+        'you think i can roll null dice?',
+        'did you forget to write something there'
+    ]
+    await ctx.send(f'{ctx.message.author.mention} {random.choice(choice)}')
+
+
 num_to_word = {
     1: '1️⃣',
     2: '2️⃣',
