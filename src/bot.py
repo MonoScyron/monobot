@@ -1,6 +1,6 @@
 import io
 
-from PIL import Image
+from PIL import Image, ImageSequence
 import random
 import re
 
@@ -8,6 +8,8 @@ import discord
 import dotenv
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown
+
+PFP_SIZE = (200, 200)
 
 env = dotenv.dotenv_values()
 command_prefix = env.get('PREFIX')
@@ -107,8 +109,8 @@ async def botqp(ctx: discord.ext.commands.Context, *, msg=''):
 @bot.command(aliases=['~pee'])
 async def botpee(ctx: discord.ext.commands.Context, *, msg=''):
     author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
-    pfp = Image.open(io.BytesIO(author_pfp)).resize((200, 200))
-    mask = Image.new('RGBA', (200, 200), (255, 255, 0, 100))
+    pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
+    mask = Image.new('RGBA', PFP_SIZE, (255, 255, 0, 100))
     pfp.paste(mask, (0, 0), mask)
     pfp_bytes = io.BytesIO()
     pfp.save(pfp_bytes, format="PNG")
@@ -132,7 +134,7 @@ async def on_command_error(ctx, error):
 async def botgun(ctx: discord.ext.commands.Context, *, msg=''):
     author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
     gun = Image.open('./img/gun.png').resize((150, 150))
-    pfp = Image.open(io.BytesIO(author_pfp)).resize((200, 200))
+    pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
     pfp.paste(gun, (90, 50), gun)
 
     pfp_bytes = io.BytesIO()
@@ -168,26 +170,44 @@ async def botlove(ctx: discord.ext.commands.Context, *, msg=''):
 
 @bot.command(aliases=["~explode"])
 async def botexplode(ctx: discord.ext.commands.Context, *, msg=""):
-    count = 1
-    if len(msg) >= 1:
-        count = int(msg)
+    if ctx.message.mentions:
+        author_pfp = await ctx.message.mentions[0].display_avatar.with_static_format('png').read()
+        pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
+        boom_gif = Image.open("./img/explosion.gif")
 
-    if count > 30:
-        await ctx.send('i do not permit you to blow up the server')
-        count = 30
+        frames = []
+        for frame in ImageSequence.Iterator(boom_gif):
+            static_copy = pfp.copy()
+            static_copy.paste(frame, (0, 0), frame.convert("RGBA"))
+            frames.append(static_copy)
 
-    message = ''
-    limit = 0
-    for _ in range(count):
-        message += '<:Explode:1207534077838626836> '
-        limit += 1
-        if limit >= 30:
+        pfp_boom_buffer = io.BytesIO()
+        frames[0].save(pfp_boom_buffer, format="GIF", save_all=True, append_images=frames[1:], loop=0,
+                       duration=boom_gif.info['duration'])
+        pfp_boom_buffer.seek(0)
+
+        await ctx.send(file=discord.File(pfp_boom_buffer, filename='boom.gif'))
+    else:
+        count = 1
+        if len(msg) >= 1:
+            count = int(msg)
+
+        if count > 30:
+            await ctx.send('i do not permit you to blow up the server')
+            count = 30
+
+        message = ''
+        limit = 0
+        for _ in range(count):
+            message += '<:Explode:1207534077838626836> '
+            limit += 1
+            if limit >= 30:
+                await ctx.send(message)
+                message = ''
+                limit = 0
+
+        if len(message) > 0:
             await ctx.send(message)
-            message = ''
-            limit = 0
-
-    if len(message) > 0:
-        await ctx.send(message)
 
 
 def has_duplicates(lst):
