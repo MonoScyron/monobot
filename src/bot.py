@@ -1,14 +1,10 @@
 import io
-import math
-
-import cv2
-import numpy as np
-from PIL import Image, ImageSequence
 import random
 import re
-
-import discord
 import dotenv
+import discord
+
+from PIL import Image
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown
 
