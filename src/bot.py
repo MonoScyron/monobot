@@ -1,5 +1,8 @@
 import io
+import math
 
+import cv2
+import numpy as np
 from PIL import Image, ImageSequence
 import random
 import re
@@ -173,17 +176,16 @@ async def botexplode(ctx: discord.ext.commands.Context, *, msg=""):
     if ctx.message.mentions:
         author_pfp = await ctx.message.mentions[0].display_avatar.with_static_format('png').read()
         pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-        boom_gif = Image.open("./img/explosion.gif")
 
         frames = []
-        for frame in ImageSequence.Iterator(boom_gif):
+        for frame_name in range(17):
+            frame = Image.open(f'./img/explosion/{frame_name + 1}.png')
             static_copy = pfp.copy()
             static_copy.paste(frame, (0, 0), frame.convert("RGBA"))
             frames.append(static_copy)
 
         pfp_boom_buffer = io.BytesIO()
-        frames[0].save(pfp_boom_buffer, format="GIF", save_all=True, append_images=frames[1:], loop=0,
-                       duration=boom_gif.info['duration'])
+        frames[0].save(pfp_boom_buffer, format="GIF", save_all=True, append_images=frames[1:], loop=0, duration=10)
         pfp_boom_buffer.seek(0)
 
         await ctx.send(file=discord.File(pfp_boom_buffer, filename='boom.gif'))
@@ -195,7 +197,6 @@ async def botexplode(ctx: discord.ext.commands.Context, *, msg=""):
         if count > 30:
             await ctx.send('i do not permit you to blow up the server')
             count = 30
-
         message = ''
         limit = 0
         for _ in range(count):
