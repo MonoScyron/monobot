@@ -4,6 +4,7 @@ import re
 import dotenv
 import discord
 
+from uwuipy import uwuipy
 from PIL import Image
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown
@@ -19,6 +20,8 @@ explode_more = int(env.get('EXPLODE_MORE'))
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.AutoShardedBot(command_prefix='', intents=intents)
+
+uwu = uwuipy(face_chance=.075)
 
 wildsea_dict = {
     1: 'Failure',
@@ -53,8 +56,18 @@ async def on_message(ctx):
         await bot.process_commands(ctx)
 
 
+@bot.command(aliases=['~uwu'])
+async def bot_uwu(ctx: discord.ext.commands.Context, *, msg=''):
+    if ctx.message.reference:
+        raw_msg = await ctx.fetch_message(ctx.message.reference.message_id)
+        uwu_msg = uwu.uwuify(raw_msg.content)
+    else:
+        uwu_msg = uwu.uwuify(ctx.message.content[5:])
+    await ctx.send(uwu_msg)
+
+
 @bot.command(aliases=['~'])
-async def botnodice(ctx: discord.ext.commands.Context, *, msg=''):
+async def bot_nodice(ctx: discord.ext.commands.Context, *, msg=''):
     choice = [
         'got dice?',
         'gonna roll anything there buddy?',
@@ -78,7 +91,7 @@ num_to_word = {
 
 
 @bot.command(aliases=['~p', '~poll'])
-async def botpoll(ctx: discord.ext.commands.Context, *, msg=''):
+async def bot_poll(ctx: discord.ext.commands.Context, *, msg=''):
     options = [s.strip() for s in msg.strip().split('-') if len(s) > 0]
     if len(options) > 9:
         await ctx.send('do you really need that many options in a poll?')
@@ -100,26 +113,45 @@ async def botpoll(ctx: discord.ext.commands.Context, *, msg=''):
 
 
 @bot.command(aliases=['~qp', '~quickpoll'])
-async def botqp(ctx: discord.ext.commands.Context, *, msg=''):
+async def bot_qp(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.message.add_reaction("✅")
     await ctx.message.add_reaction("❌")
 
 
 @bot.command(aliases=['~pee'])
-async def botpee(ctx: discord.ext.commands.Context, *, msg=''):
-    author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
-    pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-    mask = Image.new('RGBA', PFP_SIZE, (255, 255, 0, 100))
-    pfp.paste(mask, (0, 0), mask)
-    pfp_bytes = io.BytesIO()
-    pfp.save(pfp_bytes, format="PNG")
-    pfp_bytes.seek(0)
-    await ctx.send(file=discord.File(pfp_bytes, filename='gun.png'))
+async def bot_pee(ctx: discord.ext.commands.Context, *, msg=''):
+    def make_pee(pee_pfp):
+        pee_mask = Image.new('RGBA', PFP_SIZE, (255, 255, 0, 100))
+        pfp.paste(pee_mask, (0, 0), pee_mask)
+        pee_pfp_bytes = io.BytesIO()
+        pfp.save(pee_pfp_bytes, format="PNG")
+        pee_pfp_bytes.seek(0)
+        return pee_pfp_bytes
+
+    if ctx.message.mentions:
+        author_pfp = await ctx.message.mentions[0].display_avatar.with_static_format('png').read()
+        pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
+        await ctx.send(file=discord.File(make_pee(pfp), filename='boom.gif'))
+    elif ctx.message.reference:
+        ref = await ctx.fetch_message(ctx.message.reference.message_id)
+        author_pfp = await ref.author.display_avatar.with_static_format('png').read()
+        pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
+        await ctx.send(file=discord.File(make_pee(pfp), filename='boom.gif'))
+    else:
+        author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
+        pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
+
+        mask = Image.new('RGBA', PFP_SIZE, (255, 255, 0, 100))
+        pfp.paste(mask, (0, 0), mask)
+        pfp_bytes = io.BytesIO()
+        pfp.save(pfp_bytes, format="PNG")
+        pfp_bytes.seek(0)
+        await ctx.send(file=discord.File(pfp_bytes, filename='gun.png'))
 
 
 @bot.command(aliases=['~a'])
 @commands.cooldown(5, 300)
-async def bota(ctx: discord.ext.commands.Context, *, msg=''):
+async def bot_a(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.send(f'<@{owner_id}>')
 
 
@@ -130,7 +162,7 @@ async def on_command_error(ctx, error):
 
 
 @bot.command(aliases=['~gun'])
-async def botgun(ctx: discord.ext.commands.Context, *, msg=''):
+async def bot_gun(ctx: discord.ext.commands.Context, *, msg=''):
     author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
     gun = Image.open('./img/gun.png').resize((150, 150))
     pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
@@ -143,7 +175,7 @@ async def botgun(ctx: discord.ext.commands.Context, *, msg=''):
 
 
 @bot.command(aliases=["~love"])
-async def botlove(ctx: discord.ext.commands.Context, *, msg=''):
+async def bot_love(ctx: discord.ext.commands.Context, *, msg=''):
     if ctx.message.author.id == explode:
         if random.random() < 0.05:
             love = ['💕', '💝', '💖']
@@ -168,15 +200,12 @@ async def botlove(ctx: discord.ext.commands.Context, *, msg=''):
 
 
 @bot.command(aliases=["~explode"])
-async def botexplode(ctx: discord.ext.commands.Context, *, msg=""):
-    if ctx.message.mentions:
-        author_pfp = await ctx.message.mentions[0].display_avatar.with_static_format('png').read()
-        pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-
+async def bot_explode(ctx: discord.ext.commands.Context, *, msg=""):
+    def make_explode(boom_pfp):
         frames = []
         for frame_name in range(17):
             frame = Image.open(f'./img/explosion/{frame_name + 1}.png')
-            static_copy = pfp.copy()
+            static_copy = boom_pfp.copy()
             static_copy.paste(frame.convert("RGBA"), (0, 0), frame.convert("RGBA"))
             frames.append(static_copy)
 
@@ -184,8 +213,17 @@ async def botexplode(ctx: discord.ext.commands.Context, *, msg=""):
         frames[0].save(pfp_boom_buffer, format="GIF", save_all=True, append_images=frames[1:], loop=0, duration=10,
                        disposal=2)
         pfp_boom_buffer.seek(0)
+        return pfp_boom_buffer
 
-        await ctx.send(file=discord.File(pfp_boom_buffer, filename='boom.gif'))
+    if ctx.message.mentions:
+        author_pfp = await ctx.message.mentions[0].display_avatar.with_static_format('png').read()
+        pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
+        await ctx.send(file=discord.File(make_explode(pfp), filename='boom.gif'))
+    elif ctx.message.reference:
+        ref = await ctx.fetch_message(ctx.message.reference.message_id)
+        author_pfp = await ref.author.display_avatar.with_static_format('png').read()
+        pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
+        await ctx.send(file=discord.File(make_explode(pfp), filename='boom.gif'))
     else:
         count = 1
         if len(msg) >= 1:
@@ -228,7 +266,7 @@ hate = [
 
 
 @bot.command(aliases=["~hate"])
-async def bothate(ctx: discord.ext.commands.Context, *, msg=""):
+async def bot_hate(ctx: discord.ext.commands.Context, *, msg=""):
     pool = [random.choices(range(1, 7), weights=weights)[0] for _ in range(10)]
     pool = sorted(pool, reverse=True)
     fval = max(pool)
@@ -253,7 +291,7 @@ async def bothate(ctx: discord.ext.commands.Context, *, msg=""):
 
 
 @bot.command(aliases=["~rollwildsea"])
-async def botroll(ctx: discord.ext.commands.Context, *, msg=""):
+async def bot_roll(ctx: discord.ext.commands.Context, *, msg=""):
     try:
         message = ''
         if '#' in msg:
