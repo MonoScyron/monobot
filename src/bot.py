@@ -85,13 +85,14 @@ class RollModeEnum(Enum):
 
 @bot.command(aliases=['~mode'])
 async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
-    if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == env.get("OWNER_ID"):
-        await ctx.send(f'this command can only be used by admins & mono')
-        return
 
     split = ctx.message.content.split(' ')
     if len(split) == 1:
         await ctx.send(f'current server rolling mode: "{data["roll mode"][str(ctx.guild.id)]}"')
+        return
+
+    if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == env.get("OWNER_ID"):
+        await ctx.send(f'setting the rolling mode of this server can only be done by admins & mono')
         return
 
     mode = split[1]
@@ -102,7 +103,7 @@ async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
         data['roll mode'][f'{ctx.guild.id}'] = mode
         with open('data.json', 'w') as file:
             json.dump(data, file)
-        await ctx.send(f'successfully set roll mode of this server to "{mode}"')
+        await ctx.send(f'successfully set rolling mode of this server to "{mode}"')
 
 
 @bot.command(aliases=['~uwu'])
