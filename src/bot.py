@@ -85,10 +85,15 @@ class RollModeEnum(Enum):
 
 @bot.command(aliases=['~mode'])
 async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
-
     split = ctx.message.content.split(' ')
     if len(split) == 1:
-        await ctx.send(f'current server rolling mode: "{data["roll mode"][str(ctx.guild.id)]}"')
+        if f'{ctx.guild.id}' in data['roll mode']:
+            await ctx.send(f'current server rolling mode: "{data["roll mode"][str(ctx.guild.id)]}"')
+        else:
+            data['roll mode'][f'{ctx.guild.id}'] = RollModeEnum.FITD.value
+            with open('data.json', 'w') as file:
+                json.dump(data, file)
+            await ctx.send(f'server currently has no rolling mode, setting to "fitd" by default')
         return
 
     if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == env.get("OWNER_ID"):
@@ -98,7 +103,7 @@ async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
     mode = split[1]
     modes = {e.value for e in RollModeEnum}
     if mode not in modes:
-        await ctx.send(f'mode does not exist!\nallowed roll modes: *{", ".join(sorted(modes))}*')
+        await ctx.send(f'mode does not exist!\nallowed rolling modes: *{", ".join(sorted(modes))}*')
     else:
         data['roll mode'][f'{ctx.guild.id}'] = mode
         with open('data.json', 'w') as file:
