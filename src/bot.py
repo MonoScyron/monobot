@@ -1,6 +1,9 @@
 import io
+import json
 import random
 import re
+from enum import Enum
+
 import dotenv
 import discord
 
@@ -21,6 +24,10 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.AutoShardedBot(command_prefix='', intents=intents)
 
+data = {}
+with open('data.json', 'r') as file:
+    data = json.load(file)
+
 uwu = uwuipy(face_chance=.075)
 
 wildsea_dict = {
@@ -32,12 +39,27 @@ wildsea_dict = {
     6: 'Success'
 }
 
+fitd_dict = {
+    1: 'Failure',
+    2: 'Failure',
+    3: 'Failure',
+    4: 'Success (with consequence)',
+    5: 'Success (with consequence)',
+    6: 'Success'
+}
+
 
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
     activity = discord.Activity(type=discord.ActivityType.playing, name="actual suffering")
     await bot.change_presence(activity=activity)
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, CommandOnCooldown):
+        await ctx.send(f'<:Explode:1207534077838626836>')
 
 
 @bot.event
@@ -54,6 +76,33 @@ async def on_message(ctx):
                 cut = " -" + ctx.content.split('-')[1].strip()
             ctx.content = newcontent + cut + msg
         await bot.process_commands(ctx)
+
+
+class RollModeEnum(Enum):
+    WILDSEAS = "wildseas"
+    FITD = "fitd"
+
+
+@bot.command(aliases=['~mode'])
+async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
+    if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == env.get("OWNER_ID"):
+        await ctx.send(f'this command can only be used by admins & mono')
+        return
+
+    split = ctx.message.content.split(' ')
+    if len(split) == 1:
+        await ctx.send(f'current server rolling mode: "{data["roll mode"][str(ctx.guild.id)]}"')
+        return
+
+    mode = split[1]
+    modes = {e.value for e in RollModeEnum}
+    if mode not in modes:
+        await ctx.send(f'mode does not exist!\nallowed roll modes: *{", ".join(sorted(modes))}*')
+    else:
+        data['roll mode'][f'{ctx.guild.id}'] = mode
+        with open('data.json', 'w') as file:
+            json.dump(data, file)
+        await ctx.send(f'successfully set roll mode of this server to "{mode}"')
 
 
 @bot.command(aliases=['~uwu'])
@@ -120,7 +169,7 @@ async def bot_qp(ctx: discord.ext.commands.Context, *, msg=''):
 
 @bot.command(aliases=['~pee'])
 async def bot_pee(ctx: discord.ext.commands.Context, *, msg=''):
-    def make_pee(pee_pfp):
+    def make_pee():
         pee_mask = Image.new('RGBA', PFP_SIZE, (255, 255, 0, 100))
         pfp.paste(pee_mask, (0, 0), pee_mask)
         pee_pfp_bytes = io.BytesIO()
@@ -131,12 +180,12 @@ async def bot_pee(ctx: discord.ext.commands.Context, *, msg=''):
     if ctx.message.mentions:
         author_pfp = await ctx.message.mentions[0].display_avatar.with_static_format('png').read()
         pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-        await ctx.send(file=discord.File(make_pee(pfp), filename='boom.gif'))
+        await ctx.send(file=discord.File(make_pee(), filename='boom.gif'))
     elif ctx.message.reference:
         ref = await ctx.fetch_message(ctx.message.reference.message_id)
         author_pfp = await ref.author.display_avatar.with_static_format('png').read()
         pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-        await ctx.send(file=discord.File(make_pee(pfp), filename='boom.gif'))
+        await ctx.send(file=discord.File(make_pee(), filename='boom.gif'))
     else:
         author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
         pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
@@ -153,12 +202,6 @@ async def bot_pee(ctx: discord.ext.commands.Context, *, msg=''):
 @commands.cooldown(5, 300)
 async def bot_a(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.send(f'<@{owner_id}>')
-
-
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, CommandOnCooldown):
-        await ctx.send(f'<:Explode:1207534077838626836>')
 
 
 @bot.command(aliases=['~gun'])
@@ -290,34 +333,14 @@ async def bot_hate(ctx: discord.ext.commands.Context, *, msg=""):
     await ctx.send(fstr)
 
 
-@bot.command(aliases=["~rollwildsea"])
-async def bot_roll(ctx: discord.ext.commands.Context, *, msg=""):
-    try:
-        message = ''
-        if '#' in msg:
-            message = f"; roll for `{msg.split('#')[1]}`"
-            msg = msg.split('#')[0]
-        split = msg.split(" ")
-        dice = int(split[0])
-        cut = 0
-        for i in range(1, len(split)):
-            if '-' == split[i][0]:
-                cut = int(split[i][1:])
-    except ValueError:
-        await ctx.send("that doesnt look like a valid integer")
-        return
-
-    if dice and dice > 100:
-        await ctx.send('in what world do you need to roll that many dice?')
-        return
-
+def roll_wildsea(ctx: discord.ext.commands.Context, message: str, cut: int, dice: int):
     if cut > 0:
         if dice - cut <= 0:
             if random.random() < .1:
-                await ctx.send(f'{ctx.message.author.mention}, you cut all your dice for a **{wildsea_dict[1]}** like the fool you are')
+                return (f'{ctx.message.author.mention}, you cut all your dice for a **{wildsea_dict[1]}** like the '
+                        f'fool you are')
             else:
-                await ctx.send(f'{ctx.message.author.mention}, you cut all your dice for a **{wildsea_dict[1]}**')
-            return
+                return f'{ctx.message.author.mention}, you cut all your dice for a **{wildsea_dict[1]}**'
 
     if dice > 0:
         pool = [random.randint(1, 6) for _ in range(dice)]
@@ -340,7 +363,7 @@ async def bot_roll(ctx: discord.ext.commands.Context, *, msg=""):
                     cut_count += 1
                 else:
                     fstr += f'`{x}`, '
-            fstr = fstr[:-2] + "]"
+            return fstr[:-2] + "]"
         else:
             fval = max(pool)
             twist = has_duplicates(pool)
@@ -353,7 +376,7 @@ async def bot_roll(ctx: discord.ext.commands.Context, *, msg=""):
             fstr += f' [`{dice}d`: {fval}; '
             for x in sorted(pool, reverse=True):
                 fstr += f'`{x}`, '
-            fstr = fstr[:-2] + "]"
+            return fstr[:-2] + "]"
     else:
         pool = [random.randint(1, 6) for _ in range(2 - dice)]
         fval = min(pool)
@@ -361,8 +384,70 @@ async def bot_roll(ctx: discord.ext.commands.Context, *, msg=""):
         fstr += f' [`{dice}d`: {fval}; `{sorted(pool)[0]}`, '
         for x in sorted(pool)[1:]:
             fstr += f'~~`{x}`~~, '
-        fstr = fstr[:-2] + "]"
-    await ctx.send(fstr)
+        return fstr[:-2] + "]"
+
+
+def roll_fitd(ctx: discord.ext.commands.Context, message: str, dice: int):
+    if dice > 0:
+        pool = [random.randint(1, 6) for _ in range(dice)]
+        fval = max(pool)
+
+        crit = pool.count(6) >= 2
+        if not crit:
+            fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **{fitd_dict[fval]}**{message}.'
+        else:
+            fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **Critical Success**{message}.'
+
+        fstr += f' [`{dice}d`: {fval}; '
+        for x in sorted(pool, reverse=True):
+            fstr += f'`{x}`, '
+        return fstr[:-2] + "]"
+    else:
+        pool = [random.randint(1, 6) for _ in range(2 - dice)]
+        fval = min(pool)
+        fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **{fitd_dict[fval]}**{message}.'
+        fstr += f' [`{dice}d`: {fval}; `{sorted(pool)[0]}`, '
+        for x in sorted(pool)[1:]:
+            fstr += f'~~`{x}`~~, '
+        return fstr[:-2] + "]"
+
+
+@bot.command(aliases=["~rollwildsea"])
+async def bot_roll(ctx: discord.ext.commands.Context, *, msg=""):
+    try:
+        message = ''
+        if '#' in msg:
+            message = f"; roll for `{msg.split('#')[1]}`"
+            msg = msg.split('#')[0]
+        split = msg.split(" ")
+        dice = int(split[0])
+        cut = 0
+        for i in range(1, len(split)):
+            if '-' == split[i][0]:
+                cut = int(split[i][1:])
+    except ValueError:
+        await ctx.send("that doesnt look like a valid integer")
+        return
+
+    if dice and dice > 100:
+        await ctx.send('in what world do you need to roll that many dice?')
+        return
+
+    if data['roll mode'][f'{ctx.guild.id}'] == RollModeEnum.WILDSEAS.value:
+        await ctx.send(roll_wildsea(ctx, message, cut, dice))
+    elif data['roll mode'][f'{ctx.guild.id}'] == RollModeEnum.FITD.value:
+        await ctx.send(roll_fitd(ctx, message, dice))
+    else:
+        await ctx.send("invalid roll mode: " + data['roll mode'][f'{ctx.guild.id}'])
+
+
+@bot.command(aliases=['~invite'])
+async def bot_invite(ctx: discord.ext.commands.Context, *, msg=""):
+    if f'{ctx.message.author.id}' == env.get("OWNER_ID"):
+        await ctx.send(f'use this [invite](https://discord.com/oauth2/authorize?client_id=1208179071624941578'
+                       f'&permissions=277025688640&scope=bot) to add monobot to your server')
+    else:
+        await ctx.send('this method is only usable by mono')
 
 
 bot.run(env.get("CLIENT_TOKEN"))
