@@ -304,7 +304,7 @@ def has_duplicates(lst):
     return False
 
 
-weights = [1, .5, .25, .05, .025, .005]
+weights = [1, .5, .25, .04, .02, .0025]
 hate = [
     '\neat shit!!!!!',
     '\nexplode???',
@@ -314,13 +314,8 @@ hate = [
 ]
 
 
-@bot.command(aliases=["~hate"])
-async def bot_hate(ctx: discord.ext.commands.Context, *, msg=""):
-    pool = [random.choices(range(1, 7), weights=weights)[0] for _ in range(10)]
-    pool = sorted(pool, reverse=True)
-    fval = max(pool)
+def hate_wildseas(ctx: discord.ext.commands.Context, pool, fval):
     twist = has_duplicates(pool)
-
     if not twist:
         fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{wildsea_dict[fval]}**.'
     else:
@@ -335,8 +330,40 @@ async def bot_hate(ctx: discord.ext.commands.Context, *, msg=""):
         fstr += random.choice(hate)
     elif fval == 6:
         fstr += '\ndamn...'
+    return fstr
 
-    await ctx.send(fstr)
+
+def hate_fitd(ctx: discord.ext.commands.Context, pool, fval):
+    crit = pool.count(6) >= 2
+    if not crit:
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{fitd_dict[fval]}**.'
+    else:
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **Critical Success**.'
+
+    fstr += f' [`10d`: {fval}; '
+    for x in pool:
+        fstr += f'`{x}`, '
+    fstr = fstr[:-2] + "]"
+
+    if fval <= 3:
+        fstr += random.choice(hate)
+    elif fval == 6:
+        fstr += '\ndamn...'
+    return fstr
+
+
+@bot.command(aliases=["~hate"])
+async def bot_hate(ctx: discord.ext.commands.Context, *, msg=""):
+    pool = [random.choices(range(1, 7), weights=weights)[0] for _ in range(10)]
+    pool = sorted(pool, reverse=True)
+    fval = max(pool)
+
+    if data['roll mode'][f'{ctx.guild.id}'] == RollModeEnum.WILDSEAS.value:
+        await ctx.send(hate_wildseas(ctx, pool, fval))
+    elif data['roll mode'][f'{ctx.guild.id}'] == RollModeEnum.FITD.value:
+        await ctx.send(hate_fitd(ctx, pool, fval))
+    else:
+        await ctx.send("invalid roll mode: " + data['roll mode'][f'{ctx.guild.id}'])
 
 
 def roll_wildsea(ctx: discord.ext.commands.Context, message: str, cut: int, dice: int):
