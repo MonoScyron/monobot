@@ -111,6 +111,11 @@ async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
         await ctx.send(f'successfully set rolling mode of this server to "{mode}"')
 
 
+@bot.command(aliases=['~touchgrass'])
+async def bot_touchgrass(ctx: discord.ext.commands.Context, *, msg=''):
+    await ctx.send('https://hard-drive.net/hd/video-games/top-10-grasses-to-go-touch/')
+
+
 @bot.command(aliases=['~uwu'])
 async def bot_uwu(ctx: discord.ext.commands.Context, *, msg=''):
     if ctx.message.reference:
