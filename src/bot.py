@@ -78,6 +78,15 @@ async def on_message(ctx):
         await bot.process_commands(ctx)
 
 
+@bot.command(aliases=['~choose'])
+async def bot_choose(ctx: discord.ext.commands.Context, *, msg=''):
+    split = [x.strip() for x in ctx.message.content[7:].split(',')]
+    if len(split) == 0:
+        await ctx.send("you'll need to give me a list of comma-separated choices for me to choose from")
+    else:
+        await ctx.send(f'{ctx.message.author.mention}, i choose `{random.choice(split)}` for you')
+
+
 class RollModeEnum(Enum):
     WILDSEAS = "wildseas"
     FITD = "fitd"
