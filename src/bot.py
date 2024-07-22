@@ -1,8 +1,10 @@
+import asyncio
 import io
 import json
 import random
 import re
 from enum import Enum
+from typing import Union
 
 import dotenv
 import discord
@@ -278,15 +280,22 @@ async def bot_explode(ctx: discord.ext.commands.Context, *, msg=""):
         pfp_boom_buffer.seek(0)
         return pfp_boom_buffer
 
-    if ctx.message.mentions:
-        author_pfp = await ctx.message.mentions[0].display_avatar.with_static_format('png').read()
+    if ctx.message.mentions or ctx.message.reference:
+        if ctx.message.mentions:
+            if ctx.message.mentions[0].id == int(env.get('OWNER_ID')):
+                author_pfp = await (
+                    await bot.fetch_user(int(env.get('MEAT_SHIELD')))).display_avatar.with_static_format('png').read()
+            else:
+                author_pfp = await ctx.message.mentions[0].display_avatar.with_static_format('png').read()
+        else:
+            ref = await ctx.fetch_message(ctx.message.reference.message_id)
+            if ref.author.id == int(env.get('OWNER_ID')):
+                author_pfp = await (
+                    await bot.fetch_user(int(env.get('MEAT_SHIELD')))).display_avatar.with_static_format('png').read()
+            else:
+                author_pfp = await ref.author.display_avatar.with_static_format('png').read()
         pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-        await ctx.send(file=discord.File(make_explode(pfp), filename='boom.gif'))
-    elif ctx.message.reference:
-        ref = await ctx.fetch_message(ctx.message.reference.message_id)
-        author_pfp = await ref.author.display_avatar.with_static_format('png').read()
-        pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-        await ctx.send(file=discord.File(make_explode(pfp), filename='boom.gif'))
+        await ctx.send('MEAT SHIELD GO', file=discord.File(make_explode(pfp), filename='boom.gif'))
     else:
         count = 1
         if len(msg) >= 1:
