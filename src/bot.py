@@ -98,11 +98,12 @@ async def on_message(ctx):
                 r'~-?\d+[dD]( ?-\d*)?( h| r| hr| rh)?($| ?#.*)',
                 ctx.content):
             newcontent = "~roll " + ctx.content[1:].lower().split("d")[0]
-            difficulty = ''
             msg = ''
             if "#" in ctx.content:
                 msg = "#" + ctx.content.split('#')[1].strip()
                 difficulty = f' {ctx.content.split("d")[1].split("#")[0].strip()} '
+            else:
+                difficulty = ctx.content.split("d")[1]
             ctx.content = newcontent + difficulty + msg
         elif re.match(r'~-?\d+[dD]( ?-\d*)?($| ?#.*)', ctx.content):
             newcontent = "~roll " + ctx.content[1:].lower().split("d")[0]
