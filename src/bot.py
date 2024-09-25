@@ -94,19 +94,21 @@ async def on_command_error(ctx, error):
 @bot.event
 async def on_message(ctx):
     if ctx.content and ctx.content[0] == command_prefix:
+        split_content = ctx.content[1:].lower().split("d")
         if data['roll mode'][f'{ctx.guild.id}'] == RollModeEnum.CAIN.value and re.match(
-                r'~-?\d+[dD]( ?-\d*)?( h| r| hr| rh)?($| ?#.*)',
+                r'~-?\d+[dD]!?( ?-\d*)?( h| r| hr| rh)?($| ?#.*)',
                 ctx.content):
-            newcontent = "~roll " + ctx.content[1:].lower().split("d")[0]
+            newcontent = "~roll " + split_content[0]
             msg = ''
             if "#" in ctx.content:
                 msg = "#" + ctx.content.split('#')[1].strip()
                 difficulty = f' {ctx.content.split("d")[1].split("#")[0].strip()} '
             else:
                 difficulty = ctx.content.split("d")[1]
+                difficulty = difficulty.replace('!', ' !')
             ctx.content = newcontent + difficulty + msg
-        elif re.match(r'~-?\d+[dD]( ?-\d*)?($| ?#.*)', ctx.content):
-            newcontent = "~roll " + ctx.content[1:].lower().split("d")[0]
+        elif re.match(r'~-?\d+[dD]!?( ?-\d*)?($| ?#.*)', ctx.content):
+            newcontent = "~roll " + split_content[0]
             cut = ''
             msg = ''
             if "#" in ctx.content:
@@ -114,6 +116,8 @@ async def on_message(ctx):
                 ctx.content = ctx.content.split('#')[0].strip()
             if "-" in ctx.content:
                 cut = " -" + ctx.content.split('-')[1].strip()
+            if len(split_content[1]) > 0 and split_content[1][0] == "!":
+                newcontent = newcontent + " !"
             ctx.content = newcontent + cut + msg
         await bot.process_commands(ctx)
 
@@ -447,7 +451,12 @@ async def roll_risk(ctx: discord.ext.commands.Context, *, msg=""):
         await ctx.send('only available for "cain" roll mode')
 
 
-def roll_cain(ctx: discord.ext.commands.Context, message: str, dice: int, is_risky: bool, is_hard: bool):
+def roll_cain(ctx: discord.ext.commands.Context,
+              message: str,
+              dice: int,
+              is_risky: bool,
+              is_hard: bool,
+              sort_dice: bool):
     if dice > 0:
         pool = [random.randint(1, 6) for _ in range(dice)]
         fval = max(pool)
@@ -466,7 +475,7 @@ def roll_cain(ctx: discord.ext.commands.Context, message: str, dice: int, is_ris
                 fstr = f'{ctx.message.author.mention}, you rolled {dice}d for {num_success} **Successes**{message}.'
 
         fstr += f' [`{dice}d`: {fval}; '
-        for x in sorted(pool, reverse=True):
+        for x in (sorted(pool, reverse=True) if sort_dice else pool):
             fstr += f'`{x}`, '
     else:
         pool = [random.randint(1, 6) for _ in range(2 - dice)]
@@ -486,7 +495,7 @@ def roll_cain(ctx: discord.ext.commands.Context, message: str, dice: int, is_ris
     return fstr
 
 
-def roll_wildsea(ctx: discord.ext.commands.Context, message: str, cut: int, dice: int):
+def roll_wildsea(ctx: discord.ext.commands.Context, message: str, cut: int, dice: int, sort_dice: bool):
     if cut > 0:
         if dice - cut <= 0:
             if random.random() < .1:
@@ -527,7 +536,7 @@ def roll_wildsea(ctx: discord.ext.commands.Context, message: str, cut: int, dice
                 fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **Twist** and a **{wildsea_dict[fval]}**{message}.'
 
             fstr += f' [`{dice}d`: {fval}; '
-            for x in sorted(pool, reverse=True):
+            for x in (sorted(pool, reverse=True) if sort_dice else pool):
                 fstr += f'`{x}`, '
             return fstr[:-2] + "]"
     else:
@@ -540,7 +549,7 @@ def roll_wildsea(ctx: discord.ext.commands.Context, message: str, cut: int, dice
         return fstr[:-2] + "]"
 
 
-def roll_fitd(ctx: discord.ext.commands.Context, message: str, dice: int):
+def roll_fitd(ctx: discord.ext.commands.Context, message: str, dice: int, sort_dice: bool):
     if dice > 0:
         pool = [random.randint(1, 6) for _ in range(dice)]
         fval = max(pool)
@@ -552,7 +561,7 @@ def roll_fitd(ctx: discord.ext.commands.Context, message: str, dice: int):
             fstr = f'{ctx.message.author.mention}, you rolled {dice}d for a **Critical Success**{message}.'
 
         fstr += f' [`{dice}d`: {fval}; '
-        for x in sorted(pool, reverse=True):
+        for x in (sorted(pool, reverse=True) if sort_dice else pool):
             fstr += f'`{x}`, '
         return fstr[:-2] + "]"
     else:
@@ -574,8 +583,12 @@ async def bot_roll(ctx: discord.ext.commands.Context, *, msg=""):
                 message = f"; roll for `{msg.split('#')[1]}`"
                 msg = msg.split('#')[0]
             split = [x for x in msg.split(" ") if len(x) > 0]
+            sorted_dice = ('!' not in split[1]) if len(split) > 1 else True
             dice = int(split[0])
-            difficulty = split[1].strip() if len(split) > 1 else ''
+            if sorted_dice:
+                difficulty = split[1].strip() if len(split) > 1 else ''
+            else:
+                difficulty = split[2].strip() if len(split) > 2 else ''
         except ValueError:
             await ctx.send("that doesnt look like a valid integer")
             return
@@ -583,7 +596,7 @@ async def bot_roll(ctx: discord.ext.commands.Context, *, msg=""):
             await ctx.send('in what world do you need to roll that many dice?')
             return
 
-        await ctx.send(roll_cain(ctx, message, dice, 'r' in difficulty, 'h' in difficulty))
+        await ctx.send(roll_cain(ctx, message, dice, 'r' in difficulty, 'h' in difficulty, sorted_dice))
         return
 
     try:
@@ -602,9 +615,9 @@ async def bot_roll(ctx: discord.ext.commands.Context, *, msg=""):
         return
 
     if data['roll mode'][f'{ctx.guild.id}'] == RollModeEnum.WILDSEAS.value:
-        await ctx.send(roll_wildsea(ctx, message, cut, dice))
+        await ctx.send(roll_wildsea(ctx, message, cut, dice, '!' not in split))
     elif data['roll mode'][f'{ctx.guild.id}'] == RollModeEnum.FITD.value:
-        await ctx.send(roll_fitd(ctx, message, dice))
+        await ctx.send(roll_fitd(ctx, message, dice, '!' not in split))
     else:
         await ctx.send("invalid roll mode: " + data['roll mode'][f'{ctx.guild.id}'])
 
