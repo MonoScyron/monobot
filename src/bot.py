@@ -14,11 +14,14 @@ from PIL import Image
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown
 
+stupid_fucking_pillar = False
+
 PFP_SIZE = (200, 200)
 
 env = dotenv.dotenv_values()
 command_prefix = env.get('PREFIX')
 owner_id = env.get('OWNER_ID')
+bot_id = env.get('BOT_ID')
 explode = int(env.get('EXPLODE'))
 explode_more = int(env.get('EXPLODE_MORE'))
 
@@ -92,7 +95,10 @@ async def on_command_error(ctx, error):
 
 
 @bot.event
-async def on_message(ctx):
+async def on_message(ctx: discord.Message):
+    if ctx.author.id == int(bot_id):
+        return
+
     if ctx.content and ctx.content[0] == command_prefix:
         split_content = ctx.content[1:].lower().split("d")
         if data['roll mode'][f'{ctx.guild.id}'] == RollModeEnum.CAIN.value and re.match(
@@ -120,6 +126,22 @@ async def on_message(ctx):
                 newcontent = newcontent + " !"
             ctx.content = newcontent + cut + msg
         await bot.process_commands(ctx)
+    elif stupid_fucking_pillar and ctx.content and ctx.content[0] != 'f':
+        try:
+            await ctx.delete()
+        except Exception as e:
+            print(e)
+
+
+@bot.command(aliases=['~touchsonar'])
+async def bot_touchsonar(ctx: discord.ext.commands.Context, *, msg=''):
+    if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == owner_id:
+        await ctx.send(f'turning on touch sonar can only be done by admins & mono')
+        return
+
+    global stupid_fucking_pillar
+    stupid_fucking_pillar = not stupid_fucking_pillar
+    await ctx.send('touch based sonar now enforced' if stupid_fucking_pillar else 'touch based sonar now optional')
 
 
 @bot.command(aliases=['~choose'])
@@ -150,7 +172,7 @@ async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
             await ctx.send(f'server currently has no rolling mode, setting to "fitd" by default')
         return
 
-    if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == env.get("OWNER_ID"):
+    if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == owner_id:
         await ctx.send(f'setting the rolling mode of this server can only be done by admins & mono')
         return
 
@@ -624,7 +646,7 @@ async def bot_roll(ctx: discord.ext.commands.Context, *, msg=""):
 
 @bot.command(aliases=['~invite'])
 async def bot_invite(ctx: discord.ext.commands.Context, *, msg=""):
-    if f'{ctx.message.author.id}' == env.get("OWNER_ID"):
+    if f'{ctx.message.author.id}' == owner_id:
         await ctx.send(f'use this [invite](https://discord.com/oauth2/authorize?client_id=1208179071624941578'
                        f'&permissions=277025688640&scope=bot) to add monobot to your server')
     else:
