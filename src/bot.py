@@ -126,7 +126,7 @@ async def on_message(ctx: discord.Message):
                 newcontent = newcontent + " !"
             ctx.content = newcontent + cut + msg
         await bot.process_commands(ctx)
-    elif stupid_fucking_pillar and ctx.content and ctx.content[0] != 'f':
+    elif stupid_fucking_pillar and ctx.content and (ctx.content[0] != 'f' and ctx.content[0] != 'F'):
         try:
             await ctx.delete()
         except Exception as e:
