@@ -1,10 +1,8 @@
-import asyncio
 import io
 import json
 import random
 import re
 from enum import Enum
-from typing import Union
 
 import dotenv
 import discord
@@ -13,8 +11,6 @@ from uwuipy import uwuipy
 from PIL import Image
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown
-
-stupid_fucking_pillar = False
 
 PFP_SIZE = (200, 200)
 
@@ -29,11 +25,17 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.AutoShardedBot(command_prefix='', intents=intents)
 
+stupid_fucking_pillar = dict()
 data = {}
 with open('data.json', 'r') as file:
     data = json.load(file)
 
 uwu = uwuipy(face_chance=.075)
+
+
+class GuildStatus(Enum):
+    touchsonar = 0
+
 
 wildsea_dict = {
     1: 'Failure',
@@ -126,7 +128,9 @@ async def on_message(ctx: discord.Message):
                 newcontent = newcontent + " !"
             ctx.content = newcontent + cut + msg
         await bot.process_commands(ctx)
-    elif stupid_fucking_pillar and ctx.content and (ctx.content[0] != 'f' and ctx.content[0] != 'F'):
+    elif ctx.guild.id in stupid_fucking_pillar and stupid_fucking_pillar[
+        ctx.guild.id] == GuildStatus.touchsonar and ctx.content and (
+            ctx.content[0] != 'f' and ctx.content[0] != 'F'):
         try:
             await ctx.delete()
         except Exception as e:
@@ -140,8 +144,15 @@ async def bot_touchsonar(ctx: discord.ext.commands.Context, *, msg=''):
         return
 
     global stupid_fucking_pillar
-    stupid_fucking_pillar = not stupid_fucking_pillar
-    await ctx.send('touch based sonar now enforced' if stupid_fucking_pillar else 'touch based sonar now optional')
+    print(stupid_fucking_pillar, ctx.channel)
+    if ctx.guild.id in stupid_fucking_pillar and not stupid_fucking_pillar[ctx.guild.id] == GuildStatus.touchsonar:
+        await ctx.send('another status is currently being applied to this server!')
+    elif ctx.guild.id in stupid_fucking_pillar:
+        del stupid_fucking_pillar[ctx.guild.id]
+        await ctx.send('touch based sonar now optional')
+    else:
+        stupid_fucking_pillar[ctx.guild.id] = GuildStatus.touchsonar
+        await ctx.send('touch based sonar now enforced')
 
 
 @bot.command(aliases=['~choose'])
