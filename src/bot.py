@@ -472,7 +472,7 @@ def roll_risk_msg():
     roll = random.randint(1, 6)
     return """
 ```ansi
-[1mRisk[0m: you rolled {roll} for {risk}
+[1mRisk[0m: You rolled {roll} for {risk}
 ```""".format(roll=roll, risk=risk_dict[roll])
 
 
