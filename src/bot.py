@@ -7,7 +7,7 @@ from enum import Enum
 import dotenv
 import discord
 
-from uwuipy import uwuipy as uwu
+import uwuipy
 from PIL import Image
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown
@@ -30,7 +30,7 @@ data = {}
 with open('data.json', 'r') as file:
     data = json.load(file)
 
-uwu = uwu.Uwuipy(face_chance=.075)
+uwu = uwuipy.Uwuipy(face_chance=.075)
 
 
 class GuildStatus(Enum):
