@@ -422,13 +422,7 @@ hate = [
 ]
 
 
-def hate_wildseas(ctx: discord.ext.commands.Context, pool, fval):
-    twist = has_duplicates(pool)
-    if not twist:
-        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{wildsea_dict[fval]}**.'
-    else:
-        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **Twist** and a **{wildsea_dict[fval]}**.'
-
+def roll_hate(fstr, fval, pool):
     fstr += f' [`10d`: {fval}; '
     for x in pool:
         fstr += f'`{x}`, '
@@ -439,6 +433,15 @@ def hate_wildseas(ctx: discord.ext.commands.Context, pool, fval):
     elif fval == 6:
         fstr += '\ndamn...'
     return fstr
+
+
+def hate_wildseas(ctx: discord.ext.commands.Context, pool, fval):
+    twist = has_duplicates(pool)
+    if not twist:
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{wildsea_dict[fval]}**.'
+    else:
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **Twist** and a **{wildsea_dict[fval]}**.'
+    return roll_hate(fstr, fval, pool)
 
 
 def hate_fitd(ctx: discord.ext.commands.Context, pool, fval):
@@ -447,17 +450,7 @@ def hate_fitd(ctx: discord.ext.commands.Context, pool, fval):
         fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{fitd_dict[fval]}**.'
     else:
         fstr = f'{ctx.message.author.mention}, you rolled 10d for a **Critical Success**.'
-
-    fstr += f' [`10d`: {fval}; '
-    for x in pool:
-        fstr += f'`{x}`, '
-    fstr = fstr[:-2] + "]"
-
-    if fval <= 3:
-        fstr += random.choice(hate)
-    elif fval == 6:
-        fstr += '\ndamn...'
-    return fstr
+    return roll_hate(fstr, fval, pool)
 
 
 @bot.command(aliases=["~hate"])
@@ -503,16 +496,18 @@ def roll_cain(original_msg: discord.Message,
 
         if is_hard:
             num_success = pool.count(6)
-            if num_success <= 1:
-                fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides if sides != 6 else ""} with *hard* for a **{cain_dict_hard[fval]}**{f"; roll for `{message}`" if message else ""}.'
-            else:
-                fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides if sides != 6 else ""} with *hard* for {num_success} **Successes**{f"; roll for `{message}`" if message else ""}.'
         else:
             num_success = pool.count(6) + pool.count(5) + pool.count(4)
+
+        fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides if sides != 6 else ""}'
+        if is_hard:
+            fstr += ' with *hard*'
+        if sides == 6:
             if num_success <= 1:
-                fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides if sides != 6 else ""} for a **{cain_dict[fval]}**{f"; roll for `{message}`" if message else ""}.'
+                fstr += f' for a **{cain_dict_hard[fval] if is_hard else cain_dict[fval]}**'
             else:
-                fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides if sides != 6 else ""} for {num_success} **Successes**{f"; roll for `{message}`" if message else ""}.'
+                fstr += f' for {num_success} **Successes**'
+        fstr += f'{f"; roll for `{message}`" if message else ""}.'
 
         fstr += f' [`{dice}d`: {fval}; '
         for x in (sorted(pool, reverse=True) if sort_dice else pool):
@@ -520,10 +515,12 @@ def roll_cain(original_msg: discord.Message,
     else:
         pool = [random.randint(1, 6) for _ in range(2 - dice)]
         fval = min(pool)
+        fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides if sides != 6 else ""}'
         if is_hard:
-            fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides if sides != 6 else ""} with *hard* for a **{cain_dict_hard[fval]}**{f"; roll for `{message}`" if message else ""}.'
-        else:
-            fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides if sides != 6 else ""} for a **{cain_dict[fval]}**{f"; roll for `{message}`" if message else ""}.'
+            fstr += ' with *hard*'
+        if sides == 6:
+            fstr += f' for a **{cain_dict_hard[fval] if is_hard else cain_dict[fval]}**'
+        fstr += f'{f"; roll for `{message}`" if message else ""}.'
         fstr += f' [`{dice}d`: {fval}; `{sorted(pool)[0]}`, '
         for x in sorted(pool)[1:]:
             fstr += f'~~`{x}`~~, '
@@ -531,7 +528,6 @@ def roll_cain(original_msg: discord.Message,
     fstr = fstr[:-2] + "]"
     if is_risky:
         fstr += roll_risk_msg()
-
     return fstr
 
 
