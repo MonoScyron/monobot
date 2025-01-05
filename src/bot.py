@@ -2,12 +2,12 @@ import io
 import json
 import random
 import re
-from enum import Enum
-
 import dotenv
 import discord
-
+import copy
 import uwuipy
+
+from enum import Enum
 from PIL import Image
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown
@@ -26,9 +26,14 @@ intents.message_content = True
 bot = commands.AutoShardedBot(command_prefix='', intents=intents)
 
 stupid_fucking_pillar = dict()
-data = {}
-with open('data.json', 'r') as file:
-    data = json.load(file)
+data = {'roll mode': {}}
+try:
+    with open('data.json', 'r') as file:
+        data = json.load(file)
+except Exception as e:
+    print(f'Exception when loading data, resetting: {e}')
+    with open('data.json', 'w') as file:
+        json.dump(data, file)
 
 uwu = uwuipy.Uwuipy(face_chance=.075)
 
@@ -102,9 +107,12 @@ async def on_message(message: discord.Message):
         return
 
     if message.content and message.content[0] == command_prefix:
+        if f'{message.guild.id}' not in data['roll mode']:
+            await default_mode(message)
         try:
+            roll_mode = get_curr_roll_mode(message)
             if ((match := re.match(r'~-?(\d+)[dD](\d*)(!?)( ?-\d*)?( h| r| hr| rh)?($| ?#.*)', message.content))
-                    and data['roll mode'][f'{message.guild.id}'] == RollModeEnum.CAIN.value):
+                    and roll_mode == RollModeEnum.CAIN.value):
                 dice = int(match.group(1).strip())
                 sides = int(match.group(2).strip()) if len(match.group(2)) > 0 else 6
                 sort_dice = '!' not in match.group(3)
@@ -124,7 +132,7 @@ async def on_message(message: discord.Message):
                 if dice and dice > 100:
                     await message.channel.send('in what world do you need to roll that many dice?')
                     return
-                if data['roll mode'][f'{message.guild.id}'] == RollModeEnum.FITD.value:
+                if roll_mode == RollModeEnum.FITD.value:
                     await message.channel.send(roll_fitd(message, msg, dice, sort_dice))
                 else:
                     await message.channel.send(roll_wildsea(message, msg, cut, dice, sort_dice))
@@ -176,32 +184,60 @@ class RollModeEnum(Enum):
     CAIN = "cain"
 
 
+def get_curr_roll_mode(message: discord.Message):
+    guild_id = data['roll mode'][f'{message.guild.id}']
+    if f'{message.channel.category.id}' in guild_id['category']:
+        return guild_id['category'][f'{message.channel.category.id}']
+    else:
+        return guild_id['server']
+
+
+async def default_mode(message: discord.Message):
+    data['roll mode'][f'{message.channel.guild.id}'] = {"server": RollModeEnum.FITD.value, "category": {}}
+    with open('data.json', 'w') as file:
+        json.dump(data, file)
+    await message.channel.send(f'server currently has no rolling mode, setting to "fitd" by default')
+
+
 @bot.command(aliases=['~mode'])
 async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
     split = ctx.message.content.split(' ')
     if len(split) == 1:
         if f'{ctx.guild.id}' in data['roll mode']:
-            await ctx.send(f'current server rolling mode: "{data["roll mode"][str(ctx.guild.id)]}"')
+            send_str = f'current server rolling mode: "{data["roll mode"][str(ctx.guild.id)]["server"]}"'
+            if f'{ctx.channel.category.id}' in data['roll mode'][str(ctx.guild.id)]['category']:
+                send_str += f'\ncurrent category rolling mode: "{data["roll mode"][str(ctx.guild.id)]["category"][str(ctx.channel.category.id)]}"'
+            await ctx.send(send_str)
         else:
-            data['roll mode'][f'{ctx.guild.id}'] = RollModeEnum.FITD.value
-            with open('data.json', 'w') as file:
-                json.dump(data, file)
-            await ctx.send(f'server currently has no rolling mode, setting to "fitd" by default')
+            await default_mode(ctx.message)
         return
 
-    if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == owner_id:
-        await ctx.send(f'setting the rolling mode of this server can only be done by admins & mono')
+    if not ctx.author.guild_permissions.manage_channels and not f'{ctx.author.id}' == owner_id:
+        await ctx.send(f'setting the rolling mode of this server can only be done by channel managers & mono')
         return
 
     mode = split[1]
+    server_scope = True
     modes = {e.value for e in RollModeEnum}
+    if mode == 'local':
+        if len(split) < 2:
+            await ctx.send("you need to specify a mode (ps. ~mode local MODE)")
+            return
+        mode = split[2]
+        server_scope = False
     if mode not in modes:
         await ctx.send(f'mode does not exist!\nallowed rolling modes: *{", ".join(sorted(modes))}*')
     else:
-        data['roll mode'][f'{ctx.guild.id}'] = mode
+        if server_scope:
+            data['roll mode'][f'{ctx.guild.id}']['server'] = mode
+        else:
+            data['roll mode'][f'{ctx.guild.id}']['category'][ctx.channel.category.id] = mode
         with open('data.json', 'w') as file:
             json.dump(data, file)
-        await ctx.send(f'successfully set rolling mode of this server to "{mode}"')
+        if server_scope:
+            await ctx.send(f'successfully set rolling mode of this server to "{mode}"')
+        else:
+            await ctx.send(f'successfully set rolling mode of this category to "{mode}"')
 
 
 @bot.command(aliases=['~touchgrass'])
@@ -459,12 +495,13 @@ async def bot_hate(ctx: discord.ext.commands.Context, *, msg=""):
     pool = sorted(pool, reverse=True)
     fval = max(pool)
 
-    if data['roll mode'][f'{ctx.guild.id}'] == RollModeEnum.WILDSEAS.value:
+    roll_mode = get_curr_roll_mode(ctx.message)
+    if roll_mode == RollModeEnum.WILDSEAS.value:
         await ctx.send(hate_wildseas(ctx, pool, fval))
-    elif data['roll mode'][f'{ctx.guild.id}'] == RollModeEnum.FITD.value:
+    elif roll_mode == RollModeEnum.FITD.value:
         await ctx.send(hate_fitd(ctx, pool, fval))
     else:
-        await ctx.send("invalid roll mode: " + data['roll mode'][f'{ctx.guild.id}'])
+        await ctx.send("invalid roll mode: " + roll_mode)
 
 
 def roll_risk_msg():
@@ -477,7 +514,7 @@ def roll_risk_msg():
 
 @bot.command(aliases=["~risk"])
 async def roll_risk(ctx: discord.ext.commands.Context, *, msg=""):
-    if data['roll mode'][f'{ctx.guild.id}'] == RollModeEnum.CAIN.value:
+    if get_curr_roll_mode(ctx.message) == RollModeEnum.CAIN.value:
         await ctx.send(roll_risk_msg())
     else:
         await ctx.send('only available for "cain" roll mode')
