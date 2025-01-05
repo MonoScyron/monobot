@@ -103,8 +103,8 @@ async def on_message(message: discord.Message):
 
     if message.content and message.content[0] == command_prefix:
         try:
-            if (data['roll mode'][f'{message.guild.id}'] == RollModeEnum.CAIN.value and
-                    (match := re.match(r'~-?(\d+)[dD](\d*)(!?)( ?-\d*)?( h| r| hr| rh)?($| ?#.*)', message.content))):
+            if ((match := re.match(r'~-?(\d+)[dD](\d*)(!?)( ?-\d*)?( h| r| hr| rh)?($| ?#.*)', message.content))
+                    and data['roll mode'][f'{message.guild.id}'] == RollModeEnum.CAIN.value):
                 dice = int(match.group(1).strip())
                 sides = int(match.group(2).strip()) if len(match.group(2)) > 0 else 6
                 sort_dice = '!' not in match.group(3)
