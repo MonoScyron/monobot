@@ -199,6 +199,14 @@ async def default_mode(message: discord.Message):
     await message.channel.send(f'server currently has no rolling mode, setting to "fitd" by default')
 
 
+async def remove_local_roll_mode(ctx: discord.ext.commands.Context):
+    try:
+        del data['roll mode'][f'{ctx.guild.id}']['category'][f'{ctx.channel.category.id}']
+        await ctx.send('removing local rolling mode...')
+    except KeyError:
+        await ctx.send("local rolling mode doesn't exist!")
+
+
 @bot.command(aliases=['~mode'])
 async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
     split = ctx.message.content.split(' ')
@@ -220,8 +228,8 @@ async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
     server_scope = True
     modes = {e.value for e in RollModeEnum}
     if mode == 'local':
-        if len(split) < 2:
-            await ctx.send("you need to specify a mode (ps. ~mode local MODE)")
+        if len(split) <= 2:
+            await remove_local_roll_mode(ctx)
             return
         mode = split[2]
         server_scope = False
@@ -231,7 +239,10 @@ async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
         if server_scope:
             data['roll mode'][f'{ctx.guild.id}']['server'] = mode
         else:
-            data['roll mode'][f'{ctx.guild.id}']['category'][ctx.channel.category.id] = mode
+            if mode == data['roll mode'][f'{ctx.guild.id}']['server']:
+                await remove_local_roll_mode(ctx)
+            else:
+                data['roll mode'][f'{ctx.guild.id}']['category'][f'{ctx.channel.category.id}'] = mode
         with open('data.json', 'w') as file:
             json.dump(data, file)
         if server_scope:
