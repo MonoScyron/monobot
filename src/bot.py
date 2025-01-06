@@ -2,9 +2,10 @@ import io
 import json
 import random
 import re
+from encodings.aliases import aliases
+
 import dotenv
 import discord
-import copy
 import uwuipy
 
 from enum import Enum
@@ -23,7 +24,7 @@ explode_more = int(env.get('EXPLODE_MORE'))
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.AutoShardedBot(command_prefix='', intents=intents)
+bot = commands.AutoShardedBot(command_prefix='', intents=intents, help_command=None)
 
 stupid_fucking_pillar = dict()
 data = {'roll mode': {}}
@@ -106,7 +107,9 @@ async def on_message(message: discord.Message):
     if message.author.id == int(bot_id):
         return
 
-    if message.content and message.content[0] == command_prefix:
+    if message.content == f'{command_prefix}':
+        await nodice(message)
+    elif message.content and message.content[0] == command_prefix:
         if f'{message.guild.id}' not in data['roll mode']:
             await default_mode(message)
         try:
@@ -140,6 +143,7 @@ async def on_message(message: discord.Message):
         except ValueError:
             await message.channel.send("that doesnt look like a valid integer")
             return
+        message.content = message.content[1:]
         await bot.process_commands(message)
 
     elif message.guild.id in stupid_fucking_pillar and stupid_fucking_pillar[
@@ -151,14 +155,43 @@ async def on_message(message: discord.Message):
             print(e)
 
 
-@bot.command(aliases=['~touchsonar'])
-async def bot_touchsonar(ctx: discord.ext.commands.Context, *, msg=''):
+@bot.command(help='sends this message', usage=['help', 'help CMD'])
+async def help(ctx: discord.ext.commands.Context):
+    cmd = ctx.message.content.split()
+    if len(cmd) <= 1:
+        help_message = ''
+        for command in bot.commands:
+            help_message += f"**{command_prefix}{command.name}**: {command.help or 'no description provided'}\n"
+        await ctx.send(help_message)
+        return
+
+    cmd_name = cmd[1].strip()
+    if cmd_name in bot.all_commands:
+        help_cmd = bot.all_commands[cmd_name]
+        help_msg = f'[{command_prefix}{help_cmd.name} |'
+        for alias in help_cmd.aliases:
+            help_msg += f' {command_prefix}{alias} |'
+        help_msg = f'{help_msg[:-2]}]\n'
+
+        help_msg += f"\t**help**: {help_cmd.help or 'no description provided'}\n"
+        if help_cmd.usage:
+            help_msg += f"\t**usage**:"
+            for usage in help_cmd.usage:
+                help_msg += f' {command_prefix}{usage} |'
+            help_msg = f'{help_msg[:-2]}'
+
+        await ctx.send(help_msg)
+    else:
+        await ctx.send(f'command "{cmd_name}" not found')
+
+
+@bot.command(help='forces all messages to start with f (admins only)')
+async def touchsonar(ctx: discord.ext.commands.Context, *, msg=''):
     if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == owner_id:
         await ctx.send(f'turning on touch sonar can only be done by admins & mono')
         return
 
     global stupid_fucking_pillar
-    print(stupid_fucking_pillar, ctx.channel)
     if ctx.guild.id in stupid_fucking_pillar and not stupid_fucking_pillar[ctx.guild.id] == GuildStatus.touchsonar:
         await ctx.send('another status is currently being applied to this server!')
     elif ctx.guild.id in stupid_fucking_pillar:
@@ -169,8 +202,8 @@ async def bot_touchsonar(ctx: discord.ext.commands.Context, *, msg=''):
         await ctx.send('touch based sonar now enforced')
 
 
-@bot.command(aliases=['~choose'])
-async def bot_choose(ctx: discord.ext.commands.Context, *, msg=''):
+@bot.command(help='chooses from list of comma-separated choices', usage=['choose CHOICE, CHOICE, CHOICE, ...'])
+async def choose(ctx: discord.ext.commands.Context, *, msg=''):
     split = [x.strip() for x in ctx.message.content[7:].split(',')]
     if len(split) == 0:
         await ctx.send("you'll need to give me a list of comma-separated choices for me to choose from")
@@ -207,8 +240,9 @@ async def remove_local_roll_mode(ctx: discord.ext.commands.Context):
         await ctx.send("local rolling mode doesn't exist!")
 
 
-@bot.command(aliases=['~mode'])
-async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
+@bot.command(help='set rolling mode of the server/category (channel managers only)',
+             usage=['mode MODE', 'mode local MODE'])
+async def mode(ctx: discord.ext.commands.Context, *, msg=''):
     split = ctx.message.content.split(' ')
     if len(split) == 1:
         if f'{ctx.guild.id}' in data['roll mode']:
@@ -251,13 +285,13 @@ async def bot_mode(ctx: discord.ext.commands.Context, *, msg=''):
             await ctx.send(f'successfully set rolling mode of this category to "{mode}"')
 
 
-@bot.command(aliases=['~touchgrass'])
-async def bot_touchgrass(ctx: discord.ext.commands.Context, *, msg=''):
+@bot.command(help='good advice')
+async def touchgrass(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.send('https://hard-drive.net/hd/video-games/top-10-grasses-to-go-touch/')
 
 
-@bot.command(aliases=['~uwu'])
-async def bot_uwu(ctx: discord.ext.commands.Context, *, msg=''):
+@bot.command(help='uwu someone by replying to them or uwu your own message', usage=['uwu', 'uwu MSG'])
+async def uwu(ctx: discord.ext.commands.Context, *, msg=''):
     if ctx.message.reference:
         raw_msg = await ctx.fetch_message(ctx.message.reference.message_id)
         uwu_msg = uwu.uwuify(raw_msg.content)
@@ -266,15 +300,14 @@ async def bot_uwu(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.send(uwu_msg)
 
 
-@bot.command(aliases=['~'])
-async def bot_nodice(ctx: discord.ext.commands.Context, *, msg=''):
+async def nodice(message: discord.Message):
     choice = [
         'got dice?',
         'gonna roll anything there buddy?',
         'you think i can roll null dice?',
         'did you forget to write something there'
     ]
-    await ctx.send(f'{ctx.message.author.mention} {random.choice(choice)}')
+    await message.channel.send(f'{message.author.mention} {random.choice(choice)}')
 
 
 num_to_word = {
@@ -290,17 +323,21 @@ num_to_word = {
 }
 
 
-@bot.command(aliases=['~p', '~poll'])
-async def bot_poll(ctx: discord.ext.commands.Context, *, msg=''):
-    options = [s.strip() for s in msg.strip().split('-') if len(s) > 0]
+@bot.command(aliases=['p'],
+             help='sets up a poll, add options by passing a list of comma-separated choices (limit of 9)',
+             usage=['poll CHOICE, CHOICE, CHOICE, ...'])
+async def poll(ctx: discord.ext.commands.Context, *, msg=''):
+    options = [s.strip() for s in msg.strip().split(',') if len(s) > 0]
     if len(options) > 9:
         await ctx.send('do you really need that many options in a poll?')
         return
     if len(options) < 1:
-        await ctx.send('you gonna put any options in that poll? (ps. you can add them with a "-")')
+        await ctx.send('you gonna put any options in that poll? (ps. you can add them through a comma-separated list)')
         return
     if len(options) == 1:
-        await ctx.send('a poll with only one option is kinda boring isn\'t it? (ps. you can add more with a "-")')
+        await ctx.send(
+            'a poll with only one option is kinda boring isn\'t it? (ps. you can add more through a comma-separated list)'
+        )
         return
 
     message = ''
@@ -312,14 +349,14 @@ async def bot_poll(ctx: discord.ext.commands.Context, *, msg=''):
         await sent_msg.add_reaction(f'{num_to_word[i + 1]}')
 
 
-@bot.command(aliases=['~qp', '~quickpoll'])
-async def bot_qp(ctx: discord.ext.commands.Context, *, msg=''):
+@bot.command(aliases=['qp'], help='sets up a yes/no poll')
+async def quickpoll(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.message.add_reaction("✅")
     await ctx.message.add_reaction("❌")
 
 
-@bot.command(aliases=['~pee'])
-async def bot_pee(ctx: discord.ext.commands.Context, *, msg=''):
+@bot.command(help='reply/mention someone to make them a wee bit yellow', usage=['pee', 'pee @USER'])
+async def pee(ctx: discord.ext.commands.Context, *, msg=''):
     def make_pee():
         pee_mask = Image.new('RGBA', PFP_SIZE, (255, 255, 0, 100))
         pfp.paste(pee_mask, (0, 0), pee_mask)
@@ -349,14 +386,14 @@ async def bot_pee(ctx: discord.ext.commands.Context, *, msg=''):
         await ctx.send(file=discord.File(pfp_bytes, filename='gun.png'))
 
 
-@bot.command(aliases=['~a'])
+@bot.command(help='mention mono')
 @commands.cooldown(5, 300)
-async def bot_a(ctx: discord.ext.commands.Context, *, msg=''):
+async def a(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.send(f'<@{owner_id}>')
 
 
-@bot.command(aliases=['~gun'])
-async def bot_gun(ctx: discord.ext.commands.Context, *, msg=''):
+@bot.command(help='give yourself a gun, as a treat')
+async def gun(ctx: discord.ext.commands.Context, *, msg=''):
     author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
     gun = Image.open('./img/gun.png').resize((150, 150))
     pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
@@ -368,8 +405,8 @@ async def bot_gun(ctx: discord.ext.commands.Context, *, msg=''):
     await ctx.send(file=discord.File(pfp_bytes, filename='gun.png'))
 
 
-@bot.command(aliases=["~love"])
-async def bot_love(ctx: discord.ext.commands.Context, *, msg=''):
+@bot.command(help='show the bot a bit of love (some exceptions apply)')
+async def love(ctx: discord.ext.commands.Context, *, msg=''):
     if ctx.message.author.id == explode:
         if random.random() < 0.05:
             love = ['💕', '💝', '💖']
@@ -393,8 +430,9 @@ async def bot_love(ctx: discord.ext.commands.Context, *, msg=''):
             await ctx.message.add_reaction(random.choice(love))
 
 
-@bot.command(aliases=["~explode"])
-async def bot_explode(ctx: discord.ext.commands.Context, *, msg=""):
+@bot.command(help='reply/mention someone to blow them up, or send some nyukes',
+             usage=['explode', 'explode @USER', 'explode NUM'])
+async def explode(ctx: discord.ext.commands.Context, *, msg=""):
     def make_explode(boom_pfp):
         frames = []
         for frame_name in range(17):
@@ -500,8 +538,8 @@ def hate_fitd(ctx: discord.ext.commands.Context, pool, fval):
     return roll_hate(fstr, fval, pool)
 
 
-@bot.command(aliases=["~hate"])
-async def bot_hate(ctx: discord.ext.commands.Context, *, msg=""):
+@bot.command(help='let the bot vent some rage, may or may not improve your rolls')
+async def hate(ctx: discord.ext.commands.Context, *, msg=""):
     pool = [random.choices(range(1, 7), weights=weights)[0] for _ in range(10)]
     pool = sorted(pool, reverse=True)
     fval = max(pool)
@@ -523,8 +561,8 @@ def roll_risk_msg():
 ```""".format(roll=roll, risk=risk_dict[roll])
 
 
-@bot.command(aliases=["~risk"])
-async def roll_risk(ctx: discord.ext.commands.Context, *, msg=""):
+@bot.command(help='roll risk (only usable with Cain)')
+async def risk(ctx: discord.ext.commands.Context, *, msg=""):
     if get_curr_roll_mode(ctx.message) == RollModeEnum.CAIN.value:
         await ctx.send(roll_risk_msg())
     else:
@@ -658,8 +696,8 @@ def roll_fitd(original_msg: discord.Message, message: str, dice: int, sort_dice:
         return fstr[:-2] + "]"
 
 
-@bot.command(aliases=['~invite'])
-async def bot_invite(ctx: discord.ext.commands.Context, *, msg=""):
+@bot.command(help="sends monobot's invite link (mono only)")
+async def invite(ctx: discord.ext.commands.Context, *, msg=""):
     if f'{ctx.message.author.id}' == owner_id:
         await ctx.send(f'use this [invite](https://discord.com/oauth2/authorize?client_id=1208179071624941578'
                        f'&permissions=277025688640&scope=bot) to add monobot to your server')
