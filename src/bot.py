@@ -159,8 +159,9 @@ async def help(ctx: discord.ext.commands.Context):
     cmd = ctx.message.content.split()
     if len(cmd) <= 1:
         help_message = ''
-        for command in bot.commands:
+        for command in sorted(bot.commands, key=lambda c: c.name):
             help_message += f"**{command_prefix}{command.name}**: {command.help or 'no description provided'}\n"
+        help_message += f'`or you can {command_prefix}help CMD to learn more about a specific command`'
         await ctx.send(help_message)
         return
 
