@@ -2,7 +2,6 @@ import io
 import json
 import random
 import re
-from encodings.aliases import aliases
 
 import dotenv
 import discord
