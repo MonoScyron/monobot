@@ -561,7 +561,7 @@ def roll_risk_msg():
 ```""".format(roll=roll, risk=risk_dict[roll])
 
 
-@bot.command(help='roll risk (only usable with Cain)')
+@bot.command(aliases=['r'], help='roll risk (only usable with Cain)')
 async def risk(ctx: discord.ext.commands.Context, *, msg=""):
     if get_curr_roll_mode(ctx.message) == RollModeEnum.CAIN.value:
         await ctx.send(roll_risk_msg())
