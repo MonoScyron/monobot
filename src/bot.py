@@ -6,7 +6,11 @@ import re
 import dotenv
 import discord
 import uwuipy
+import feedparser
+import easyocr
 
+from datetime import datetime
+from dateutil import parser, tz
 from enum import Enum
 from PIL import Image
 from discord.ext import commands
@@ -26,7 +30,7 @@ intents.message_content = True
 bot = commands.AutoShardedBot(command_prefix='', intents=intents, help_command=None)
 
 stupid_fucking_pillar = dict()
-data = {'roll mode': {}}
+data = {'maint': {}, 'roll mode': {}}
 try:
     with open('data.json', 'r') as file:
         data = json.load(file)
@@ -183,6 +187,67 @@ async def help(ctx: discord.ext.commands.Context):
         await ctx.send(help_msg)
     else:
         await ctx.send(f'command "{cmd_name}" not found')
+
+
+ocr_reader = easyocr.Reader(['en'])
+rss_url = 'https://store.steampowered.com/feeds/news/app/1973530/'
+
+
+@bot.command(help='get time of Limbus maintenance', usage=['maint'])
+async def maint(ctx: discord.ext.commands.Context):
+    feed = feedparser.parse(rss_url)
+    if feed.bozo:
+        await ctx.send('failed to fetch steam news stream')
+        return
+
+    update_news = [news for news in feed.entries if 'Scheduled Update Notice' in news.title]
+    if len(update_news) == 0:
+        await ctx.send('no recent scheduled updates found')
+        return
+
+    curr_news = update_news[0]
+    if 'curr maint' in data['maint'] and data['maint']['curr maint'] == curr_news.title:
+        print('fetching cached current maint news...')
+        from_time_str = data['maint']['from time']
+        to_time_str = data['maint']['to time']
+        date_str = data['maint']['date']
+    else:
+        print('cached maint news out of date, fetching and parsing online news...')
+        await ctx.send('fetching current maintenance news...')
+
+        date_str = curr_news.title.replace('Scheduled Update Notice', '')
+        image_url = curr_news.summary.split('"')[1]
+        detection = ocr_reader.readtext(image_url)
+
+        timeframe_str = ''
+        for txt in detection:
+            text = txt[1]
+            if 'AM' in text or 'PM' in text:
+                timeframe_str += text + ' '
+        timeframe_str = timeframe_str.strip()
+
+        from_time_str = timeframe_str.split('from')[1].split('through')[0].replace('[', '').replace(']', '')
+        to_time_str = timeframe_str.split('through')[1].split('on')[0].replace('[', '').replace(']', '')
+
+        data['maint']['curr maint'] = curr_news.title
+        data['maint']['from time'] = from_time_str
+        data['maint']['to time'] = to_time_str
+        data['maint']['date'] = date_str
+        with open('data.json', 'w') as file:
+            json.dump(data, file)
+
+    from_time = parser.parse(date_str + ' ' + from_time_str).replace(tzinfo=tz.gettz('Asia/Seoul'))
+    to_time = parser.parse(date_str + ' ' + to_time_str).replace(tzinfo=tz.gettz('Asia/Seoul'))
+
+    now = int(datetime.now().timestamp())
+    from_timestamp = int(from_time.timestamp())
+    to_timestamp = int(to_time.timestamp())
+    if now < from_timestamp:
+        await ctx.send(f'the next maintenance begins in <t:{from_timestamp}:R>, at <t:{from_timestamp}>>')
+    elif from_timestamp <= now < to_timestamp:
+        await ctx.send(f'the current maintenance ends in <t:{to_timestamp}:R>, at <t:{to_timestamp}>')
+    else:
+        await ctx.send(f'the last maintenance ended <t:{to_timestamp}:R>, at <t:{to_timestamp}>')
 
 
 @bot.command(help='forces all messages to start with f (admins only)')
