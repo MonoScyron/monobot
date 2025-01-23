@@ -217,7 +217,7 @@ class RollModeEnum(Enum):
     CAIN = "cain"
 
 
-def get_curr_roll_mode(message: discord.Message):
+def get_curr_roll_mode(message: discord.Message) -> str:
     guild_id = data['roll mode'][f'{message.guild.id}']
     if f'{message.channel.category.id}' in guild_id['category']:
         return guild_id['category'][f'{message.channel.category.id}']
@@ -497,8 +497,8 @@ def has_duplicates(lst):
     return False
 
 
-weights = [1, .5, .25, .04, .02, .0025]
-hate = [
+weights = [1, .5, .25, .02, .01, .001]
+hate_list = [
     '\neat shit!!!!!',
     '\nexplode???',
     '\n>:3',
@@ -507,16 +507,20 @@ hate = [
 ]
 
 
-def roll_hate(fstr, fval, pool):
+def roll_hate(fstr, fval, pool, roll_mode):
     fstr += f' [`10d`: {fval}; '
     for x in pool:
         fstr += f'`{x}`, '
     fstr = fstr[:-2] + "]"
-
     if fval <= 3:
-        fstr += random.choice(hate)
-    elif fval == 6:
-        fstr += '\ndamn...'
+        c = random.choice(hate_list)
+        fstr += c
+    elif roll_mode != RollModeEnum.CAIN.value:
+        if fval == 6:
+            fstr += '\ndamn...'
+    else:
+        if fval > 3:
+            fstr += '\ndamn...'
     return fstr
 
 
@@ -526,7 +530,7 @@ def hate_wildseas(ctx: discord.ext.commands.Context, pool, fval):
         fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{wildsea_dict[fval]}**.'
     else:
         fstr = f'{ctx.message.author.mention}, you rolled 10d for a **Twist** and a **{wildsea_dict[fval]}**.'
-    return roll_hate(fstr, fval, pool)
+    return roll_hate(fstr, fval, pool, RollModeEnum.WILDSEAS.value)
 
 
 def hate_fitd(ctx: discord.ext.commands.Context, pool, fval):
@@ -535,7 +539,16 @@ def hate_fitd(ctx: discord.ext.commands.Context, pool, fval):
         fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{fitd_dict[fval]}**.'
     else:
         fstr = f'{ctx.message.author.mention}, you rolled 10d for a **Critical Success**.'
-    return roll_hate(fstr, fval, pool)
+    return roll_hate(fstr, fval, pool, RollModeEnum.FITD.value)
+
+
+def hate_cain(ctx: discord.ext.commands.Context, pool, fval):
+    num_success = len([x for x in pool if x > 3])
+    if num_success <= 1:
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{cain_dict[fval]}**.'
+    else:
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for {num_success} **Successes**.'
+    return roll_hate(fstr, fval, pool, RollModeEnum.CAIN.value)
 
 
 @bot.command(help='let the bot vent some rage, may or may not improve your rolls')
@@ -549,6 +562,8 @@ async def hate(ctx: discord.ext.commands.Context, *, msg=""):
         await ctx.send(hate_wildseas(ctx, pool, fval))
     elif roll_mode == RollModeEnum.FITD.value:
         await ctx.send(hate_fitd(ctx, pool, fval))
+    elif roll_mode == RollModeEnum.CAIN.value:
+        await ctx.send(hate_cain(ctx, pool, fval))
     else:
         await ctx.send("invalid roll mode: " + roll_mode)
 
