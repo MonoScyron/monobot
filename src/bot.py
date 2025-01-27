@@ -243,11 +243,12 @@ async def maint(ctx: discord.ext.commands.Context):
     from_timestamp = int(from_time.timestamp())
     to_timestamp = int(to_time.timestamp())
     if now < from_timestamp:
-        await ctx.send(f'the next maintenance begins in <t:{from_timestamp}:R>, at <t:{from_timestamp}>>')
+        await ctx.send(f'the next maintenance begins in <t:{from_timestamp}:R> at <t:{from_timestamp}> and ends in '
+                       f'<t:{to_timestamp}:R> at <t:{to_timestamp}>')
     elif from_timestamp <= now < to_timestamp:
-        await ctx.send(f'the current maintenance ends in <t:{to_timestamp}:R>, at <t:{to_timestamp}>')
+        await ctx.send(f'the current maintenance ends in <t:{to_timestamp}:R> at <t:{to_timestamp}>')
     else:
-        await ctx.send(f'the last maintenance ended <t:{to_timestamp}:R>, at <t:{to_timestamp}>')
+        await ctx.send(f'the last maintenance ended <t:{to_timestamp}:R> at <t:{to_timestamp}>')
 
 
 @bot.command(help='forces all messages to start with f (admins only)')
