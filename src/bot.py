@@ -243,10 +243,10 @@ async def maint(ctx: discord.ext.commands.Context):
     from_timestamp = int(from_time.timestamp())
     to_timestamp = int(to_time.timestamp())
     if now < from_timestamp:
-        await ctx.send(f'the next maintenance begins in <t:{from_timestamp}:R> at <t:{from_timestamp}> and ends at '
+        await ctx.send(f'the next maintenance begins <t:{from_timestamp}:R> at <t:{from_timestamp}> and ends at '
                        f'<t:{to_timestamp}>')
     elif from_timestamp <= now < to_timestamp:
-        await ctx.send(f'the current maintenance ends in <t:{to_timestamp}:R> at <t:{to_timestamp}>')
+        await ctx.send(f'the current maintenance ends <t:{to_timestamp}:R> at <t:{to_timestamp}>')
     else:
         await ctx.send(f'the last maintenance ended <t:{to_timestamp}:R> at <t:{to_timestamp}>')
 
