@@ -102,7 +102,7 @@ async def on_ready():
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, CommandOnCooldown):
-        await ctx.send(f'<:Explode:1207534077838626836>')
+        await ctx.send(f'<:explode:1333259731640258581>')
 
 
 @bot.event
@@ -477,11 +477,11 @@ async def love(ctx: discord.ext.commands.Context, *, msg=''):
             love = ['💕', '💝', '💖']
             await ctx.message.add_reaction(random.choice(love))
         else:
-            await ctx.message.add_reaction('<:Explode:1207534077838626836>')
+            await ctx.message.add_reaction('<:explode:1333259731640258581>')
 
     elif ctx.message.author.id == explode_more:
         if random.random() < 0.5:
-            await ctx.message.add_reaction('<:Explode:1207534077838626836>')
+            await ctx.message.add_reaction('<:explode:1333259731640258581>')
         else:
             love = ['⭐', '✨', '💕', '💝', '💖']
             for lv in love:
@@ -489,7 +489,7 @@ async def love(ctx: discord.ext.commands.Context, *, msg=''):
 
     else:
         if random.random() < 0.05:
-            await ctx.message.add_reaction('<:Explode:1207534077838626836>')
+            await ctx.message.add_reaction('<:explode:1333259731640258581>')
         else:
             love = ['💕', '💝', '💖']
             await ctx.message.add_reaction(random.choice(love))
@@ -542,7 +542,7 @@ async def explode(ctx: discord.ext.commands.Context, *, msg=""):
         message = ''
         limit = 0
         for _ in range(count):
-            message += '<:Explode:1207534077838626836> '
+            message += '<:explode:1333259731640258581> '
             limit += 1
             if limit >= 30:
                 await ctx.send(message)
@@ -780,7 +780,7 @@ def roll_fitd(original_msg: discord.Message, message: str, dice: int, sort_dice:
 async def invite(ctx: discord.ext.commands.Context, *, msg=""):
     if f'{ctx.message.author.id}' == owner_id:
         await ctx.send(f'use this [invite](https://discord.com/oauth2/authorize?client_id=1208179071624941578'
-                       f'&permissions=277025688640&scope=bot) to add monobot to your server')
+                       f'&permissions=8&scope=bot) to add monobot to your server')
     else:
         await ctx.send('this method is only usable by mono')
 
