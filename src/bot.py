@@ -474,7 +474,6 @@ async def gun(ctx: discord.ext.commands.Context, *, msg=''):
 @bot.command(help='show the bot a bit of love (some exceptions apply)')
 async def love(ctx: discord.ext.commands.Context, *, msg=''):
     if ctx.message.author.id == explode_id:
-        print('1')
         if random.random() < 0.05:
             love = ['💕', '💝', '💖']
             await ctx.message.add_reaction(random.choice(love))
@@ -482,7 +481,6 @@ async def love(ctx: discord.ext.commands.Context, *, msg=''):
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
 
     elif ctx.message.author.id == explode_more_id:
-        print('2')
         if random.random() < 0.5:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
         else:
@@ -491,7 +489,6 @@ async def love(ctx: discord.ext.commands.Context, *, msg=''):
                 await ctx.message.add_reaction(random.choice(lv))
 
     else:
-        print('3')
         if random.random() < 0.05:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
         else:
