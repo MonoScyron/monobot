@@ -20,10 +20,10 @@ PFP_SIZE = (200, 200)
 
 env = dotenv.dotenv_values()
 command_prefix = env.get('PREFIX')
-owner_id = env.get('OWNER_ID')
+owner_id = int(env.get('OWNER_ID'))
 bot_id = env.get('BOT_ID')
-explode = int(env.get('EXPLODE'))
-explode_more = int(env.get('EXPLODE_MORE'))
+explode_id = int(env.get('EXPLODE'))
+explode_more_id = int(env.get('EXPLODE_MORE'))
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -39,7 +39,7 @@ except Exception as e:
     with open('data.json', 'w') as file:
         json.dump(data, file)
 
-uwu = uwuipy.Uwuipy(face_chance=.075)
+uwu_factory = uwuipy.Uwuipy(face_chance=.075)
 
 
 class GuildStatus(Enum):
@@ -360,9 +360,9 @@ async def touchgrass(ctx: discord.ext.commands.Context, *, msg=''):
 async def uwu(ctx: discord.ext.commands.Context, *, msg=''):
     if ctx.message.reference:
         raw_msg = await ctx.fetch_message(ctx.message.reference.message_id)
-        uwu_msg = uwu.uwuify(raw_msg.content)
+        uwu_msg = uwu_factory.uwuify(raw_msg.content)
     else:
-        uwu_msg = uwu.uwuify(ctx.message.content[5:])
+        uwu_msg = uwu_factory.uwuify(ctx.message.content[4:])
     await ctx.send(uwu_msg)
 
 
@@ -473,14 +473,16 @@ async def gun(ctx: discord.ext.commands.Context, *, msg=''):
 
 @bot.command(help='show the bot a bit of love (some exceptions apply)')
 async def love(ctx: discord.ext.commands.Context, *, msg=''):
-    if ctx.message.author.id == explode:
+    if ctx.message.author.id == explode_id:
+        print('1')
         if random.random() < 0.05:
             love = ['💕', '💝', '💖']
             await ctx.message.add_reaction(random.choice(love))
         else:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
 
-    elif ctx.message.author.id == explode_more:
+    elif ctx.message.author.id == explode_more_id:
+        print('2')
         if random.random() < 0.5:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
         else:
@@ -489,6 +491,7 @@ async def love(ctx: discord.ext.commands.Context, *, msg=''):
                 await ctx.message.add_reaction(random.choice(lv))
 
     else:
+        print('3')
         if random.random() < 0.05:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
         else:
