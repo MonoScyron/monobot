@@ -135,6 +135,7 @@ async def on_message(message: discord.Message):
 @bot.event
 async def on_message_edit(before: discord.Message, message: discord.Message):
     if (message.guild.id in stupid_fucking_pillar and
+            message.author.id != int(BOT_ID) and
             stupid_fucking_pillar[message.guild.id]['status'] == GuildStatus.touchsonar and
             message.created_at.timestamp() > stupid_fucking_pillar[message.guild.id]['start'] and
             message.content and
