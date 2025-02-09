@@ -20,10 +20,10 @@ PFP_SIZE = (200, 200)
 
 env = dotenv.dotenv_values()
 COMMAND_PREFIX = env.get('PREFIX')
-OWNER_ID = int(env.get('OWNER_ID'))
+OWNER_ID = env.get('OWNER_ID')
 BOT_ID = env.get('BOT_ID')
-EXPLODE_ID = int(env.get('EXPLODE'))
-EXPLODE_MORE_ID = int(env.get('EXPLODE_MORE'))
+EXPLODE_ID = env.get('EXPLODE')
+EXPLODE_MORE_ID = env.get('EXPLODE_MORE')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -466,14 +466,14 @@ async def gun(ctx: discord.ext.commands.Context, *, msg=''):
 
 @bot.command(help='show the bot a bit of love (some exceptions apply)')
 async def love(ctx: discord.ext.commands.Context, *, msg=''):
-    if ctx.message.author.id == EXPLODE_ID:
+    if ctx.message.author.id == int(EXPLODE_ID):
         if random.random() < 0.05:
             love = ['💕', '💝', '💖']
             await ctx.message.add_reaction(random.choice(love))
         else:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
 
-    elif ctx.message.author.id == EXPLODE_MORE_ID:
+    elif ctx.message.author.id == int(EXPLODE_MORE_ID):
         if random.random() < 0.5:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
         else:
@@ -509,17 +509,17 @@ async def explode(ctx: discord.ext.commands.Context, *, msg=""):
     if ctx.message.mentions or ctx.message.reference:
         message = ''
         if ctx.message.mentions:
-            if ctx.message.mentions[0].id == int(env.get('OWNER_ID')):
+            if ctx.message.mentions[0].id == int(OWNER_ID):
                 author_pfp = await (
-                    await bot.fetch_user(int(env.get('MEAT_SHIELD')))).display_avatar.with_static_format('png').read()
+                    await bot.fetch_user(int(EXPLODE_ID))).display_avatar.with_static_format('png').read()
                 message = 'MEAT SHIELD GO'
             else:
                 author_pfp = await ctx.message.mentions[0].display_avatar.with_static_format('png').read()
         else:
             ref = await ctx.fetch_message(ctx.message.reference.message_id)
-            if ref.author.id == int(env.get('OWNER_ID')):
+            if ref.author.id == int(OWNER_ID):
                 author_pfp = await (
-                    await bot.fetch_user(int(env.get('MEAT_SHIELD')))).display_avatar.with_static_format('png').read()
+                    await bot.fetch_user(int(EXPLODE_ID))).display_avatar.with_static_format('png').read()
                 message = 'MEAT SHIELD GO'
             else:
                 author_pfp = await ref.author.display_avatar.with_static_format('png').read()
@@ -809,7 +809,7 @@ async def roll_dice(message: discord.Message) -> bool:
 
 @bot.command(help="sends monobot's invite link (mono only)")
 async def invite(ctx: discord.ext.commands.Context, *, msg=""):
-    if f'{ctx.message.author.id}' == OWNER_ID:
+    if ctx.message.author.id == int(OWNER_ID):
         await ctx.send(f'use this [invite](https://discord.com/oauth2/authorize?client_id=1208179071624941578'
                        f'&permissions=8&scope=bot) to add monobot to your server')
     else:
