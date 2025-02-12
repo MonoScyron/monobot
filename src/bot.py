@@ -208,15 +208,16 @@ async def maint(ctx: discord.ext.commands.Context):
         image_url = curr_news.summary.split('"')[1]
         detection = ocr_reader.readtext(image_url)
 
-        timeframe_str = ''
+        detect_str = ''
         for txt in detection:
-            text = txt[1]
-            if 'AM' in text or 'PM' in text:
-                timeframe_str += text + ' '
-        timeframe_str = timeframe_str.strip()
+            detect_str += txt[1].strip() + ' '
+        detect_str = detect_str.strip()
 
-        from_time_str = timeframe_str.split('from')[1].split('through')[0].replace('[', '').replace(']', '')
-        to_time_str = timeframe_str.split('through')[1].split('on')[0].replace('[', '').replace(']', '')
+        time_strs = [w for w in detect_str.split('from') if '[AM]' in w][0]
+        time_strs = time_strs.split('on')[0].split('through')
+
+        from_time_str = time_strs[0].replace('[', '').replace(']', '')
+        to_time_str = time_strs[1].replace('[', '').replace(']', '')
 
         data['maint']['curr maint'] = curr_news.title
         data['maint']['from time'] = from_time_str
