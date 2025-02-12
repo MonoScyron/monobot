@@ -567,7 +567,7 @@ hate_list = [
 
 
 def __roll_hate(fstr, fval, pool, roll_mode):
-    fstr += f' [`10d`: {fval}; '
+    fstr += f' [`10d`: **{fval}**; '
     for x in pool:
         fstr += f'`{x}`, '
     fstr = fstr[:-2] + "]"
@@ -669,7 +669,7 @@ def __roll_cain(original_msg: discord.Message,
                 fstr += f' for {num_success} **Successes**'
         fstr += f'{f"; roll for `{message}`" if message else ""}.'
 
-        fstr += f' [`{dice}d`: {fval}; '
+        fstr += f' [`{dice}d`: **{fval}**; '
         for x in (sorted(pool, reverse=True) if sort_dice else pool):
             fstr += f'`{x}`, '
     else:
@@ -681,7 +681,7 @@ def __roll_cain(original_msg: discord.Message,
         if sides == 6:
             fstr += f' for a **{cain_dict_hard[fval] if is_hard else cain_dict[fval]}**'
         fstr += f'{f"; roll for `{message}`" if message else ""}.'
-        fstr += f' [`{dice}d`: {fval}; `{sorted(pool)[0]}`, '
+        fstr += f' [`{dice}d`: **{fval}**; `{sorted(pool)[0]}`, '
         for x in sorted(pool)[1:]:
             fstr += f'~~`{x}`~~, '
 
@@ -714,7 +714,7 @@ def __roll_wildsea(original_msg: discord.Message, message: str, cut: int, dice: 
                 fstr = f'{original_msg.author.mention}, you rolled {dice}d with cut of {cut} for a **Twist** and a **{wildsea_dict[fval]}**{f"; roll for `{message}`" if message else ""}.'
 
             cut_count = 0
-            fstr += f' [`{dice}d`: {fval}; '
+            fstr += f' [`{dice}d`: **{fval}**; '
             for x in pool:
                 if cut_count < cut:
                     fstr += f'~~`{x}`~~, '
@@ -731,7 +731,7 @@ def __roll_wildsea(original_msg: discord.Message, message: str, cut: int, dice: 
             else:
                 fstr = f'{original_msg.author.mention}, you rolled {dice}d for a **Twist** and a **{wildsea_dict[fval]}**{f"; roll for `{message}`" if message else ""}.'
 
-            fstr += f' [`{dice}d`: {fval}; '
+            fstr += f' [`{dice}d`: **{fval}**; '
             for x in (sorted(pool, reverse=True) if sort_dice else pool):
                 fstr += f'`{x}`, '
             return fstr[:-2] + "]"
@@ -739,7 +739,7 @@ def __roll_wildsea(original_msg: discord.Message, message: str, cut: int, dice: 
         pool = [random.randint(1, 6) for _ in range(2 - dice)]
         fval = min(pool)
         fstr = f'{original_msg.author.mention}, you rolled {dice}d for a **{wildsea_dict[fval]}**{f"; roll for `{message}`" if message else ""}.'
-        fstr += f' [`{dice}d`: {fval}; `{sorted(pool)[0]}`, '
+        fstr += f' [`{dice}d`: **{fval}**; `{sorted(pool)[0]}`, '
         for x in sorted(pool)[1:]:
             fstr += f'~~`{x}`~~, '
         return fstr[:-2] + "]"
@@ -756,7 +756,7 @@ def __roll_fitd(original_msg: discord.Message, message: str, dice: int, sort_dic
         else:
             fstr = f'{original_msg.author.mention}, you rolled {dice}d for a **Critical Success**{f"; roll for `{message}`" if message else ""}.'
 
-        fstr += f' [`{dice}d`: {fval}; '
+        fstr += f' [`{dice}d`: **{fval}**; '
         for x in (sorted(pool, reverse=True) if sort_dice else pool):
             fstr += f'`{x}`, '
         return fstr[:-2] + "]"
@@ -764,7 +764,7 @@ def __roll_fitd(original_msg: discord.Message, message: str, dice: int, sort_dic
         pool = [random.randint(1, 6) for _ in range(2 - dice)]
         fval = min(pool)
         fstr = f'{original_msg.author.mention}, you rolled {dice}d for a **{fitd_dict[fval]}**{f"; roll for `{message}`" if message else ""}.'
-        fstr += f' [`{dice}d`: {fval}; `{sorted(pool)[0]}`, '
+        fstr += f' [`{dice}d`: **{fval}**; `{sorted(pool)[0]}`, '
         for x in sorted(pool)[1:]:
             fstr += f'~~`{x}`~~, '
         return fstr[:-2] + "]"
