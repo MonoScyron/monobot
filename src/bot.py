@@ -772,7 +772,7 @@ def __roll_fitd(original_msg: discord.Message, message: str, dice: int, sort_dic
 
 
 async def roll_dice(message: discord.Message) -> bool:
-    """Return true if roll pattern matched"""
+    """Return true if roll pattern matched/do not continue"""
     try:
         roll_mode = __get_curr_roll_mode(message)
         if (match := re.match(r'~-?(\d+)[dD](\d*)(!?)( ?-\d*)?( h| r| hr| rh)?($| ?#.*)',
@@ -795,6 +795,7 @@ async def roll_dice(message: discord.Message) -> bool:
             msg = match.group(4).strip().replace('#', '')
             if dice and dice > 100:
                 await message.channel.send('in what world do you need to roll that many dice?')
+                return True
             if roll_mode == RollModeEnum.FITD.value:
                 await message.channel.send(__roll_fitd(message, msg, dice, sort_dice))
             else:
