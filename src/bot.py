@@ -1,5 +1,6 @@
 import io
 import json
+import math
 import random
 import re
 
@@ -24,6 +25,7 @@ OWNER_ID = env.get('OWNER_ID')
 BOT_ID = env.get('BOT_ID')
 EXPLODE_ID = env.get('EXPLODE')
 EXPLODE_MORE_ID = env.get('EXPLODE_MORE')
+DEBUG = int(env.get('DEBUG', 0))
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -91,6 +93,19 @@ cain_dict_hard = {
     6: 'Success'
 }
 
+hunter_dict = {
+    1: 'Failure',
+    2: 'Failure',
+    3: 'Failure',
+    4: 'Failure',
+    5: 'Failure',
+    6: 'Success',
+    7: 'Success',
+    8: 'Success',
+    9: 'Success',
+    10: 'Success'
+}
+
 
 @bot.event
 async def on_ready():
@@ -101,6 +116,7 @@ async def on_ready():
 
 @bot.event
 async def on_command_error(ctx, error):
+    print(error)
     if isinstance(error, CommandOnCooldown):
         await ctx.send(f'<:explode:1333259731640258581>')
 
@@ -178,8 +194,9 @@ async def help(ctx: discord.ext.commands.Context):
         await ctx.send(f'command "{cmd_name}" not found')
 
 
-ocr_reader = easyocr.Reader(['en'])
-rss_url = 'https://store.steampowered.com/feeds/news/app/1973530/'
+if not DEBUG:
+    ocr_reader = easyocr.Reader(['en'])
+    rss_url = 'https://store.steampowered.com/feeds/news/app/1973530/'
 
 
 @bot.command(help='get time of Limbus maintenance', usage=['maint'])
@@ -275,6 +292,10 @@ class RollModeEnum(Enum):
     WILDSEAS = "wildseas"
     FITD = "fitd"
     CAIN = "cain"
+    HUNTER = "hunter"
+
+
+modes = {e.value for e in RollModeEnum}
 
 
 def __get_curr_roll_mode(message: discord.Message) -> str:
@@ -320,13 +341,13 @@ async def mode(ctx: discord.ext.commands.Context, *, msg=''):
 
     mode = split[1]
     server_scope = True
-    modes = {e.value for e in RollModeEnum}
     if mode == 'local':
         if len(split) <= 2:
             await __remove_local_roll_mode(ctx)
             return
         mode = split[2]
         server_scope = False
+
     if mode not in modes:
         await ctx.send(f'mode does not exist!\nallowed rolling modes: *{", ".join(sorted(modes))}*')
     else:
@@ -337,6 +358,7 @@ async def mode(ctx: discord.ext.commands.Context, *, msg=''):
                 await __remove_local_roll_mode(ctx)
             else:
                 data['roll mode'][f'{ctx.guild.id}']['category'][f'{ctx.channel.category.id}'] = mode
+
         with open('data.json', 'w') as file:
             json.dump(data, file)
         if server_scope:
@@ -658,7 +680,7 @@ def __roll_cain(original_msg: discord.Message,
         if is_hard:
             num_success = pool.count(6)
         else:
-            num_success = pool.count(6) + pool.count(5) + pool.count(4)
+            num_success = sum(pool.count(i) for i in range(5, 7))
 
         fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides if sides != 6 else ""}'
         if is_hard:
@@ -771,16 +793,48 @@ def __roll_fitd(original_msg: discord.Message, message: str, dice: int, sort_dic
         return fstr[:-2] + "]"
 
 
+def __roll_hunter(original_msg: discord.Message, message: str, dice: int, desp_dice: int, sort_dice: bool):
+    pool = [random.randint(1, 10) for _ in range(dice)]
+    desp_pool = [random.randint(1, 10) for _ in range(desp_dice)]
+    agg_pool = pool + desp_pool
+
+    num_success = sum(agg_pool.count(i) for i in range(6, 11)) + math.floor(agg_pool.count(10) / 2) * 2
+
+    fval = max(agg_pool)
+    min_val_desp = min(desp_pool) if desp_dice > 0 else -1
+
+    fstr = f'{original_msg.author.mention}, you rolled {dice}d{f" | {desp_dice}d" if desp_dice > 0 else ""} '
+    if num_success <= 1:
+        fstr += f'for a **{hunter_dict[fval]}**'
+    else:
+        fstr += f'for {num_success} **Successes**'
+
+    if min_val_desp == 1:
+        fstr += f' and you are in for a world of darkness'
+    fstr += f'{f"; roll for `{message}`" if message else ""}.'
+
+    fstr += f' [`{dice}d{f" | {desp_dice}d" if desp_dice > 0 else ""}`: **{fval}**; '
+    for x in (sorted(pool, reverse=True) if sort_dice else pool):
+        fstr += f'`{x}`, '
+
+    if desp_dice > 0:
+        fstr = fstr[:-2] + ' | '
+        for x in (sorted(desp_pool, reverse=True) if sort_dice else desp_pool):
+            fstr += f'`{x}`, '
+
+    return fstr[:-2] + "]"
+
+
 async def roll_dice(message: discord.Message) -> bool:
     """Return true if roll pattern matched/do not continue"""
     try:
         roll_mode = __get_curr_roll_mode(message)
-        if (match := re.match(r'~-?(\d+)[dD](\d*)(!?)( ?-\d*)?( h| r| hr| rh)?($| ?#.*)',
-                              message.content)) and roll_mode == RollModeEnum.CAIN.value:
+        if ((match := re.match(r'~(\d+)[dD](\d*)(!?)( ?-\d*)?( h| r| hr| rh)?($| ?#.*)', message.content)) and
+                roll_mode == RollModeEnum.CAIN.value):
             dice = int(match.group(1).strip())
             sides = int(match.group(2).strip()) if len(match.group(2)) > 0 else 6
             sort_dice = '!' not in match.group(3)
-            difficulty = f'{match.group(5).strip() if match.group(5) else ""}'
+            difficulty = match.group(5).strip() if match.group(5) else ""
             msg = match.group(6).strip().replace('#', '')
             if dice and dice > 100:
                 await message.channel.send('in what world do you need to roll that many dice?')
@@ -788,11 +842,23 @@ async def roll_dice(message: discord.Message) -> bool:
             await message.channel.send(__roll_cain(message, msg, dice, 'r' in difficulty, 'h' in difficulty,
                                                    sort_dice, sides))
             return True
-        elif match := re.match(r'~-?(\d+)[dD](!?)( ?-\d*)?($| ?#.*)', message.content):
+        elif ((match := re.match(r'~(\d+)[dD](!?)(\s?[dD]([0-9]))?($| ?#.*)', message.content)) and
+              roll_mode == RollModeEnum.HUNTER.value):
             dice = int(match.group(1).strip())
             sort_dice = '!' not in match.group(2)
-            cut = int(match.group(3).strip().replace('-', '')) if match.group(3) else 0
-            msg = match.group(4).strip().replace('#', '')
+            desp_dice = int(match.group(4).strip()) if match.group(4) else 0
+            msg = match.group(5).strip().replace('#', '')
+            if dice and dice > 100:
+                await message.channel.send('in what world do you need to roll that many dice?')
+                return True
+            await message.channel.send(__roll_hunter(message, msg, dice, desp_dice, sort_dice))
+            return True
+        elif ((match := re.match(r'~(-?)(\d+)[dD](!?)( ?-\d*)?($| ?#.*)', message.content)) and
+              (roll_mode == RollModeEnum.WILDSEAS.value or roll_mode == RollModeEnum.FITD.value)):
+            dice = int(f'{match.group(1)}{match.group(2).strip()}')
+            sort_dice = '!' not in match.group(3)
+            cut = int(match.group(4).strip().replace('-', '')) if match.group(4) else 0
+            msg = match.group(5).strip().replace('#', '')
             if dice and dice > 100:
                 await message.channel.send('in what world do you need to roll that many dice?')
                 return True
@@ -804,7 +870,8 @@ async def roll_dice(message: discord.Message) -> bool:
 
         # continue executing other possible commands
         return False
-    except ValueError:
+    except ValueError as e:
+        print(f'ValueError: {e}')
         await message.channel.send("that doesnt look like a valid integer")
         return True
 
