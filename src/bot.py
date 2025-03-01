@@ -799,21 +799,19 @@ def __roll_hunter(original_msg: discord.Message, message: str, dice: int, desp_d
     agg_pool = pool + desp_pool
 
     num_success = sum(agg_pool.count(i) for i in range(6, 11)) + math.floor(agg_pool.count(10) / 2) * 2
-
-    fval = max(agg_pool)
     min_val_desp = min(desp_pool) if desp_dice > 0 else -1
 
-    fstr = f'{original_msg.author.mention}, you rolled {dice}d{f" | {desp_dice}d" if desp_dice > 0 else ""} '
-    if num_success <= 1:
-        fstr += f'for a **{hunter_dict[fval]}**'
+    fstr = f'{original_msg.author.mention}, you rolled {dice}d{f" | {desp_dice}d" if desp_dice > 0 else ""}'
+    if num_success == 1:
+        fstr += f' for {num_success} **Success**'
     else:
-        fstr += f'for {num_success} **Successes**'
+        fstr += f' for {num_success} **Successes**'
 
     if min_val_desp == 1:
         fstr += f' and you are in for a world of darkness'
     fstr += f'{f"; roll for `{message}`" if message else ""}.'
 
-    fstr += f' [`{dice}d{f" | {desp_dice}d" if desp_dice > 0 else ""}`: **{fval}**; '
+    fstr += f' [`{dice}d{f" | {desp_dice}d" if desp_dice > 0 else ""}`: '
     for x in (sorted(pool, reverse=True) if sort_dice else pool):
         fstr += f'`{x}`, '
 
