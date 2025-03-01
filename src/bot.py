@@ -803,9 +803,9 @@ def __roll_hunter(original_msg: discord.Message, message: str, dice: int, desp_d
 
     fstr = f'{original_msg.author.mention}, you rolled {dice}d{f" | {desp_dice}d" if desp_dice > 0 else ""}'
     if num_success == 1:
-        fstr += f' for {num_success} **Success**'
+        fstr += f' for **{num_success}** success'
     else:
-        fstr += f' for {num_success} **Successes**'
+        fstr += f' for **{num_success}** successes'
 
     if min_val_desp == 1:
         fstr += f' and you are in for a world of darkness'
