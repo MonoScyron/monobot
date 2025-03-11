@@ -680,7 +680,7 @@ def __roll_cain(original_msg: discord.Message,
         if is_hard:
             num_success = pool.count(6)
         else:
-            num_success = sum(pool.count(i) for i in range(5, 7))
+            num_success = sum(pool.count(i) for i in range(4, 7))
 
         fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides if sides != 6 else ""}'
         if is_hard:
