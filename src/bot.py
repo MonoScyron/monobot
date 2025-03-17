@@ -3,6 +3,7 @@ import json
 import math
 import random
 import re
+import logging
 
 import dotenv
 import discord
@@ -16,8 +17,12 @@ from enum import Enum
 from PIL import Image
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown
+from threading import Timer
+
+# TODO: Oh my god this is so bad I need to make this a proper class before GOD HIMSELF SMITES ME
 
 PFP_SIZE = (200, 200)
+MAINT_UPDATE_LOOP = 5 * 60  # update every 5 mins
 
 env = dotenv.dotenv_values()
 COMMAND_PREFIX = env.get('PREFIX')
@@ -26,6 +31,12 @@ BOT_ID = env.get('BOT_ID')
 EXPLODE_ID = env.get('EXPLODE')
 EXPLODE_MORE_ID = env.get('EXPLODE_MORE')
 DEBUG = int(env.get('DEBUG', 0))
+
+log = logging.getLogger('MonoBot')
+logging.basicConfig(format='%(asctime)s:%(name)s:%(levelname)s:%(funcName)s:%(message)s',
+                    filename='run.log',
+                    encoding='utf-8',
+                    level=logging.INFO)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -37,7 +48,7 @@ try:
     with open('data.json', 'r') as file:
         data = json.load(file)
 except Exception as e:
-    print(f'Exception when loading data, resetting: {e}')
+    log.warning(f'Exception when loading data, resetting: {e}')
     with open('data.json', 'w') as file:
         json.dump(data, file)
 
@@ -45,7 +56,7 @@ uwu_factory = uwuipy.Uwuipy(face_chance=.075)
 
 
 class GuildStatus(Enum):
-    touchsonar = 0
+    TOUCHSONAR = 0
 
 
 wildsea_dict = {
@@ -109,14 +120,14 @@ hunter_dict = {
 
 @bot.event
 async def on_ready():
-    print(f'{bot.user} has connected to Discord!')
+    log.info(f'{bot.user} has connected to Discord!')
     activity = discord.Activity(type=discord.ActivityType.playing, name="actual suffering")
     await bot.change_presence(activity=activity)
 
 
 @bot.event
 async def on_command_error(ctx, error):
-    print(error)
+    log.error(f'command error: {error}')
     if isinstance(error, CommandOnCooldown):
         await ctx.send(f'<:explode:1333259731640258581>')
 
@@ -138,21 +149,21 @@ async def on_message(message: discord.Message):
         await bot.process_commands(message)
 
     elif (message.guild.id in stupid_fucking_pillar and
-          stupid_fucking_pillar[message.guild.id]['status'] == GuildStatus.touchsonar and
+          stupid_fucking_pillar[message.guild.id]['status'] == GuildStatus.TOUCHSONAR and
           message.content and
           message.content[0] != 'f' and
           message.content[0] != 'F'):
         try:
             await message.delete()
         except Exception as e:
-            print(e)
+            log.error(f'error deleting on message in touchsonar: {e}')
 
 
 @bot.event
 async def on_message_edit(before: discord.Message, message: discord.Message):
     if (message.guild.id in stupid_fucking_pillar and
             message.author.id != int(BOT_ID) and
-            stupid_fucking_pillar[message.guild.id]['status'] == GuildStatus.touchsonar and
+            stupid_fucking_pillar[message.guild.id]['status'] == GuildStatus.TOUCHSONAR and
             message.created_at.timestamp() > stupid_fucking_pillar[message.guild.id]['start'] and
             message.content and
             message.content[0] != 'f' and
@@ -160,7 +171,7 @@ async def on_message_edit(before: discord.Message, message: discord.Message):
         try:
             await message.delete()
         except Exception as e:
-            print(e)
+            log.error(f'error deleting on edit in touchsonar: {e}')
 
 
 @bot.command(help='sends this message', usage=['help', 'help CMD'])
@@ -199,6 +210,51 @@ if not DEBUG:
     rss_url = 'https://store.steampowered.com/feeds/news/app/1973530/'
 
 
+def maint_update(curr_news):
+    date_str = curr_news.title.replace('Scheduled Update Notice', '')
+    image_url = curr_news.summary.split('"')[1]
+    detection = ocr_reader.readtext(image_url)
+
+    detect_str = ''
+    for txt in detection:
+        detect_str += txt[1].strip() + ' '
+    detect_str = detect_str.strip()
+
+    time_strs = [w for w in detect_str.split('from') if '[AM]' in w][0]
+    time_strs = time_strs.split('on')[0].split('through')
+
+    from_time_str = time_strs[0].replace('[', '').replace(']', '')
+    to_time_str = time_strs[1].replace('[', '').replace(']', '')
+
+    data['maint']['curr maint'] = curr_news.title
+    data['maint']['from time'] = from_time_str
+    data['maint']['to time'] = to_time_str
+    data['maint']['date'] = date_str
+    with open('data.json', 'w') as file:
+        json.dump(data, file)
+
+
+def headless_maint_update():
+    feed = feedparser.parse(rss_url)
+    if feed.bozo:
+        log.error('failed to fetch steam news stream')
+        return
+    update_news = [news for news in feed.entries if 'Scheduled Update Notice' in news.title]
+
+    curr_news = update_news[0]
+    if 'curr maint' not in data['maint'] or data['maint']['curr maint'] != curr_news.title:
+        log.info('cached maint news out of date, fetching and parsing online news headlessly...')
+        maint_update(curr_news)
+        log.info('headlessly updated maint news')
+    else:
+        log.debug('cached maint up to date')
+
+
+maint_update_timer = Timer(MAINT_UPDATE_LOOP, headless_maint_update)
+maint_update_timer.daemon = True
+maint_update_timer.start()
+
+
 @bot.command(help='get time of Limbus maintenance', usage=['maint'])
 async def maint(ctx: discord.ext.commands.Context):
     feed = feedparser.parse(rss_url)
@@ -213,35 +269,14 @@ async def maint(ctx: discord.ext.commands.Context):
 
     curr_news = update_news[0]
     if 'curr maint' in data['maint'] and data['maint']['curr maint'] == curr_news.title:
-        print('fetching cached current maint news...')
+        log.info('fetching cached current maint news...')
         from_time_str = data['maint']['from time']
         to_time_str = data['maint']['to time']
         date_str = data['maint']['date']
     else:
-        print('cached maint news out of date, fetching and parsing online news...')
-        await ctx.send('fetching current maintenance news...')
-
-        date_str = curr_news.title.replace('Scheduled Update Notice', '')
-        image_url = curr_news.summary.split('"')[1]
-        detection = ocr_reader.readtext(image_url)
-
-        detect_str = ''
-        for txt in detection:
-            detect_str += txt[1].strip() + ' '
-        detect_str = detect_str.strip()
-
-        time_strs = [w for w in detect_str.split('from') if '[AM]' in w][0]
-        time_strs = time_strs.split('on')[0].split('through')
-
-        from_time_str = time_strs[0].replace('[', '').replace(']', '')
-        to_time_str = time_strs[1].replace('[', '').replace(']', '')
-
-        data['maint']['curr maint'] = curr_news.title
-        data['maint']['from time'] = from_time_str
-        data['maint']['to time'] = to_time_str
-        data['maint']['date'] = date_str
-        with open('data.json', 'w') as file:
-            json.dump(data, file)
+        log.info('cached maint news out of date, fetching and parsing online news...')
+        await ctx.send('fetching current maintenance news, this may take a second...')
+        maint_update(curr_news)
 
     from_time = parser.parse(date_str + ' ' + from_time_str).replace(tzinfo=tz.gettz('Asia/Seoul'))
     to_time = parser.parse(date_str + ' ' + to_time_str).replace(tzinfo=tz.gettz('Asia/Seoul'))
@@ -266,14 +301,14 @@ async def touchsonar(ctx: discord.ext.commands.Context, *, msg=''):
 
     global stupid_fucking_pillar
     if (ctx.guild.id in stupid_fucking_pillar and
-            not stupid_fucking_pillar[ctx.guild.id]['status'] == GuildStatus.touchsonar):
+            not stupid_fucking_pillar[ctx.guild.id]['status'] == GuildStatus.TOUCHSONAR):
         await ctx.send('another status is currently being applied to this server!')
     elif ctx.guild.id in stupid_fucking_pillar:
         del stupid_fucking_pillar[ctx.guild.id]
         await ctx.send('touch based sonar now optional')
     else:
         stupid_fucking_pillar[ctx.guild.id] = {
-            'status': GuildStatus.touchsonar,
+            'status': GuildStatus.TOUCHSONAR,
             'start': datetime.now().timestamp()
         }
         await ctx.send('touch based sonar now enforced')
@@ -869,7 +904,7 @@ async def roll_dice(message: discord.Message) -> bool:
         # continue executing other possible commands
         return False
     except ValueError as e:
-        print(f'ValueError: {e}')
+        log.warning(f'ValueError when rolling: {e}')
         await message.channel.send("that doesnt look like a valid integer")
         return True
 
