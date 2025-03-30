@@ -11,9 +11,9 @@ import uwuipy
 import feedparser
 import easyocr
 
+from enum import Enum
 from datetime import datetime
 from dateutil import parser, tz
-from enum import Enum
 from PIL import Image
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown
