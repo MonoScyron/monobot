@@ -277,6 +277,9 @@ async def maint(ctx: discord.ext.commands.Context):
         log.info('cached maint news out of date, fetching and parsing online news...')
         await ctx.send('fetching current maintenance news, this may take a second...')
         maint_update(curr_news)
+        date_str = data['maint']['date']
+        from_time_str = data['maint']['from time']
+        to_time_str = data['maint']['to time']
 
     from_time = parser.parse(date_str + ' ' + from_time_str).replace(tzinfo=tz.gettz('Asia/Seoul'))
     to_time = parser.parse(date_str + ' ' + to_time_str).replace(tzinfo=tz.gettz('Asia/Seoul'))
