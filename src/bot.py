@@ -210,7 +210,7 @@ if not DEBUG:
     rss_url = 'https://store.steampowered.com/feeds/news/app/1973530/'
 
 
-def maint_update(curr_news):
+def __maint_update(curr_news):
     date_str = curr_news.title.replace('Scheduled Update Notice', '')
     image_url = curr_news.summary.split('"')[1]
     detection = ocr_reader.readtext(image_url)
@@ -234,7 +234,7 @@ def maint_update(curr_news):
         json.dump(data, file)
 
 
-def headless_maint_update():
+def __headless_maint_update():
     feed = feedparser.parse(rss_url)
     if feed.bozo:
         log.error('failed to fetch steam news stream')
@@ -244,15 +244,16 @@ def headless_maint_update():
     curr_news = update_news[0]
     if 'curr maint' not in data['maint'] or data['maint']['curr maint'] != curr_news.title:
         log.info('cached maint news out of date, fetching and parsing online news headlessly...')
-        maint_update(curr_news)
+        __maint_update(curr_news)
         log.info('headlessly updated maint news')
     else:
         log.debug('cached maint up to date')
 
 
-maint_update_timer = Timer(MAINT_UPDATE_LOOP, headless_maint_update)
-maint_update_timer.daemon = True
-maint_update_timer.start()
+if not DEBUG:
+    maint_update_timer = Timer(MAINT_UPDATE_LOOP, __headless_maint_update)
+    maint_update_timer.daemon = True
+    maint_update_timer.start()
 
 
 @bot.command(help='get time of Limbus maintenance', usage=['maint'])
@@ -276,7 +277,7 @@ async def maint(ctx: discord.ext.commands.Context):
     else:
         log.info('cached maint news out of date, fetching and parsing online news...')
         await ctx.send('fetching current maintenance news, this may take a second...')
-        maint_update(curr_news)
+        __maint_update(curr_news)
         date_str = data['maint']['date']
         from_time_str = data['maint']['from time']
         to_time_str = data['maint']['to time']
