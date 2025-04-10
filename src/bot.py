@@ -332,6 +332,7 @@ class RollModeEnum(Enum):
     FITD = "fitd"
     CAIN = "cain"
     HUNTER = "hunter"
+    PERSONA = "persona"
 
 
 modes = {e.value for e in RollModeEnum}
@@ -886,6 +887,33 @@ def __roll_hunter(original_msg: discord.Message, message: str, dice: int, desp_d
     return fstr[:-2] + "]"
 
 
+def __roll_persona(original_msg: discord.Message, message: str, dice: int, sort_dice: bool, sides: int = 10):
+    if sides != 10:
+        return __roll_custom(original_msg, message, dice, sort_dice, sides)
+
+    pool = [random.randint(1, 10) for _ in range(dice)]
+    counts = [0] * sides
+    for i in range(sides):
+        counts[i] = pool.count(i + 1)
+
+    fstr = f'{original_msg.author.mention}, you rolled {dice}d'
+    fstr += f'{f"; roll for `{message}`" if message else ""}.'
+
+    fstr += f' [`{dice}d`: '
+    for x in (sorted(pool, reverse=True) if sort_dice else pool):
+        fstr += f'`{x}`, '
+
+    fstr = fstr[:-2] + f']\nSets: ['
+    for i, n in enumerate(counts):
+        if n > 1:
+            fstr += f'{n}x`{i + 1}`, '
+    fstr = fstr[:-2] + f']\nLoose dice: ['
+    for i, n in enumerate(counts):
+        if n == 1:
+            fstr += f'`{i + 1}`, '
+    return fstr[:-2] + "]"
+
+
 def __roll_custom(original_msg: discord.Message, message: str, dice: int, sort_dice: bool, sides: int, is_risky=None):
     if dice > 0:
         pool = [random.randint(1, sides) for _ in range(dice)]
@@ -942,9 +970,14 @@ async def roll_dice(message: discord.Message) -> bool:
             await message.channel.send(__roll_hunter(message, msg, dice, desp_dice, sort_dice, sides))
             return True
         elif ((match := re.match(r'~(-?)(\d+)[dD](\d*)(!?)( ?-\d*)?($| ?#.*)', message.content)) and
-              (roll_mode == RollModeEnum.WILDSEAS.value or roll_mode == RollModeEnum.FITD.value)):
+              (roll_mode == RollModeEnum.WILDSEAS.value or
+               roll_mode == RollModeEnum.FITD.value or
+               roll_mode == RollModeEnum.PERSONA.value)):
             dice = int(f'{match.group(1)}{match.group(2).strip()}')
-            sides = int(match.group(3).strip()) if len(match.group(3)) > 0 else 6
+
+            sides = int(match.group(3).strip()) if len(match.group(3)) > 0 else \
+                (10 if roll_mode == RollModeEnum.PERSONA.value else 6)
+
             sort_dice = '!' not in match.group(4)
             cut = int(match.group(5).strip().replace('-', '')) if match.group(5) else 0
             msg = match.group(6).strip().replace('#', '')
@@ -953,8 +986,10 @@ async def roll_dice(message: discord.Message) -> bool:
                 return True
             if roll_mode == RollModeEnum.FITD.value:
                 await message.channel.send(__roll_fitd(message, msg, dice, sort_dice, sides=sides))
-            else:
+            elif roll_mode == RollModeEnum.WILDSEAS.value:
                 await message.channel.send(__roll_wildsea(message, msg, cut, dice, sort_dice, sides=sides))
+            else:
+                await message.channel.send(__roll_persona(message, msg, dice, sort_dice, sides=sides))
             return True
 
         # continue executing other possible commands
