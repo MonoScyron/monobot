@@ -904,10 +904,13 @@ def __roll_persona(original_msg: discord.Message, message: str, dice: int, sort_
         fstr += f'`{x}`, '
 
     fstr = fstr[:-2] + f']\nSets: ['
+    has_set = False
     for i, n in enumerate(counts):
         if n > 1:
-            fstr += f'{n}x`{i + 1}`, '
-    fstr = fstr[:-2] + f']\nLoose dice: ['
+            has_set = True
+            fstr += f'**{n}** x`{i + 1}`, '
+    fstr = (fstr[:-2] if has_set else f'{fstr} ¯\\\\\_(ツ)_/¯ ') + f']\nLoose dice: ['
+
     for i, n in enumerate(counts):
         if n == 1:
             fstr += f'`{i + 1}`, '
