@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import math
@@ -17,12 +18,11 @@ from dateutil import parser, tz
 from PIL import Image
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown
-from threading import Timer
 
 # TODO: Oh my god this is so bad I need to make this a proper class before GOD HIMSELF SMITES ME
 
 PFP_SIZE = (200, 200)
-MAINT_UPDATE_LOOP = 5 * 60  # update every 5 mins
+MAINT_UPDATE_LOOP_TIMER = 5 * 60  # update every 5 mins
 
 env = dotenv.dotenv_values()
 COMMAND_PREFIX = env.get('PREFIX')
@@ -123,6 +123,9 @@ async def on_ready():
     log.info(f'{bot.user} has connected to Discord!')
     activity = discord.Activity(type=discord.ActivityType.playing, name="actual suffering")
     await bot.change_presence(activity=activity)
+
+    if not DEBUG:
+        asyncio.create_task(__headless_maint_update())
 
 
 @bot.event
@@ -234,26 +237,32 @@ def __maint_update(curr_news):
         json.dump(data, file)
 
 
-def __headless_maint_update():
-    feed = feedparser.parse(rss_url)
-    if feed.bozo:
-        log.error('failed to fetch steam news stream')
-        return
-    update_news = [news for news in feed.entries if 'Scheduled Update Notice' in news.title]
+async def __headless_maint_update():
+    await bot.wait_until_ready()
 
-    curr_news = update_news[0]
-    if 'curr maint' not in data['maint'] or data['maint']['curr maint'] != curr_news.title:
-        log.info('cached maint news out of date, fetching and parsing online news headlessly...')
-        __maint_update(curr_news)
-        log.info('headlessly updated maint news')
-    else:
-        log.debug('cached maint up to date')
+    log.info(f'headless maint update loop start')
 
+    while not bot.is_closed():
+        feed = feedparser.parse(rss_url)
+        if feed.bozo:
+            log.error('failed to fetch steam news stream')
+        else:
+            try:
+                update_news = [news for news in feed.entries if 'Scheduled Update Notice' in news.title]
 
-if not DEBUG:
-    maint_update_timer = Timer(MAINT_UPDATE_LOOP, __headless_maint_update)
-    maint_update_timer.daemon = True
-    maint_update_timer.start()
+                curr_news = update_news[0]
+                if 'curr maint' not in data['maint'] or data['maint']['curr maint'] != curr_news.title:
+                    log.info('cached maint news out of date, fetching and parsing online news headlessly...')
+                    __maint_update(curr_news)
+                    log.info('headlessly updated maint news')
+                else:
+                    log.info('cached maint up to date')
+            except Exception as ex:
+                log.error(f'error during headless maint update: {ex}')
+
+        await asyncio.sleep(MAINT_UPDATE_LOOP_TIMER)
+
+    log.info(f'headless maint update loop close')
 
 
 @bot.command(help='get time of Limbus maintenance', usage=['maint'])
