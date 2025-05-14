@@ -267,6 +267,10 @@ async def __headless_maint_update():
 
 @bot.command(help='get time of Limbus maintenance', usage=['maint'])
 async def maint(ctx: discord.ext.commands.Context):
+    if random.random() < 0.02:
+        await ctx.send('wouldnt you like to know, pisserboy?')
+        return
+
     feed = feedparser.parse(rss_url)
     if feed.bozo:
         await ctx.send('failed to fetch steam news stream')
