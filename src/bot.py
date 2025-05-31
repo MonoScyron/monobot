@@ -28,6 +28,7 @@ env = dotenv.dotenv_values()
 COMMAND_PREFIX = env.get('PREFIX')
 OWNER_ID = env.get('OWNER_ID')
 BOT_ID = env.get('BOT_ID')
+MEAT_SHIELD_ID = env.get('MEAT_SHIELD')
 EXPLODE_ID = env.get('EXPLODE')
 EXPLODE_MORE_ID = env.get('EXPLODE_MORE')
 DEBUG = int(env.get('DEBUG', 0))
@@ -542,27 +543,27 @@ async def gun(ctx: discord.ext.commands.Context, *, msg=''):
 
 @bot.command(help='show the bot a bit of love (some exceptions apply)')
 async def love(ctx: discord.ext.commands.Context, *, msg=''):
-    if ctx.message.author.id == int(EXPLODE_ID):
+    if ctx.message.author.id == int(EXPLODE_MORE_ID):
         if random.random() < 0.05:
-            love = ['💕', '💝', '💖']
-            await ctx.message.add_reaction(random.choice(love))
+            love_list = ['💕', '💝', '💖']
+            await ctx.message.add_reaction(random.choice(love_list))
         else:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
 
-    elif ctx.message.author.id == int(EXPLODE_MORE_ID):
+    elif ctx.message.author.id == int(EXPLODE_ID):
         if random.random() < 0.5:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
         else:
-            love = ['⭐', '✨', '💕', '💝', '💖']
-            for lv in love:
+            love_list = ['⭐', '✨', '💕', '💝', '💖']
+            for lv in love_list:
                 await ctx.message.add_reaction(random.choice(lv))
 
     else:
         if random.random() < 0.05:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
         else:
-            love = ['💕', '💝', '💖']
-            await ctx.message.add_reaction(random.choice(love))
+            love_list = ['💕', '💝', '💖']
+            await ctx.message.add_reaction(random.choice(love_list))
 
 
 @bot.command(help='reply/mention someone to blow them up, or send some nyukes',
@@ -587,7 +588,7 @@ async def explode(ctx: discord.ext.commands.Context, *, msg=""):
         if ctx.message.mentions:
             if ctx.message.mentions[0].id == int(OWNER_ID):
                 author_pfp = await (
-                    await bot.fetch_user(int(EXPLODE_ID))).display_avatar.with_static_format('png').read()
+                    await bot.fetch_user(int(MEAT_SHIELD_ID))).display_avatar.with_static_format('png').read()
                 message = 'MEAT SHIELD GO'
             else:
                 author_pfp = await ctx.message.mentions[0].display_avatar.with_static_format('png').read()
@@ -595,7 +596,7 @@ async def explode(ctx: discord.ext.commands.Context, *, msg=""):
             ref = await ctx.fetch_message(ctx.message.reference.message_id)
             if ref.author.id == int(OWNER_ID):
                 author_pfp = await (
-                    await bot.fetch_user(int(EXPLODE_ID))).display_avatar.with_static_format('png').read()
+                    await bot.fetch_user(int(MEAT_SHIELD_ID))).display_avatar.with_static_format('png').read()
                 message = 'MEAT SHIELD GO'
             else:
                 author_pfp = await ref.author.display_avatar.with_static_format('png').read()
