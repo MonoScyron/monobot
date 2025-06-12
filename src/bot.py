@@ -216,7 +216,7 @@ if not DEBUG:
 
 def __maint_update(curr_news):
     date_str = curr_news.title.replace('Scheduled Update Notice', '')
-    image_url = curr_news.summary.split('"')[1]
+    image_url = curr_news.summary.split('<img src="')[1].split('"')[0]
     detection = ocr_reader.readtext(image_url)
 
     detect_str = ''
