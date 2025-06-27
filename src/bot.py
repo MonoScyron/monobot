@@ -30,7 +30,6 @@ OWNER_ID = env.get('OWNER_ID')
 BOT_ID = env.get('BOT_ID')
 MEAT_SHIELD_ID = env.get('MEAT_SHIELD')
 EXPLODE_ID = env.get('EXPLODE')
-EXPLODE_MORE_ID = env.get('EXPLODE_MORE')
 DEBUG = int(env.get('DEBUG', 0))
 
 log = logging.getLogger('MonoBot')
@@ -543,14 +542,14 @@ async def gun(ctx: discord.ext.commands.Context, *, msg=''):
 
 @bot.command(help='show the bot a bit of love (some exceptions apply)')
 async def love(ctx: discord.ext.commands.Context, *, msg=''):
-    if ctx.message.author.id == int(EXPLODE_MORE_ID):
+    if ctx.message.author.id == int(EXPLODE_ID):
         if random.random() < 0.05:
             love_list = ['💕', '💝', '💖']
             await ctx.message.add_reaction(random.choice(love_list))
         else:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
 
-    elif ctx.message.author.id == int(EXPLODE_ID):
+    elif ctx.message.author.id == int(MEAT_SHIELD_ID):
         if random.random() < 0.5:
             await ctx.message.add_reaction('<:explode:1333259731640258581>')
         else:
