@@ -240,7 +240,7 @@ def __maint_update(curr_news):
 async def __headless_maint_update():
     await bot.wait_until_ready()
 
-    log.info(f'headless maint update loop start')
+    log.debug(f'headless maint update loop start')
 
     while not bot.is_closed():
         feed = feedparser.parse(rss_url)
@@ -256,7 +256,7 @@ async def __headless_maint_update():
                     __maint_update(curr_news)
                     log.info('headlessly updated maint news')
                 else:
-                    log.info('cached maint up to date')
+                    log.debug('cached maint up to date')
             except Exception as ex:
                 log.error(f'error during headless maint update: {ex}')
 
@@ -512,13 +512,7 @@ async def pee(ctx: discord.ext.commands.Context, *, msg=''):
     else:
         author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
         pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-
-        mask = Image.new('RGBA', PFP_SIZE, (255, 255, 0, 100))
-        pfp.paste(mask, (0, 0), mask)
-        pfp_bytes = io.BytesIO()
-        pfp.save(pfp_bytes, format="PNG")
-        pfp_bytes.seek(0)
-        await ctx.send(file=discord.File(pfp_bytes, filename='gun.png'))
+        await ctx.send(file=discord.File(make_pee(), filename='gun.png'))
 
 
 @bot.command(help='mention mono')
