@@ -237,6 +237,11 @@ def __maint_update(curr_news):
         json.dump(data, file)
 
 
+def __get_scheduled_update_news(entries):
+    return [news for news in entries if
+            'Scheduled Update Notice' in news.title and 'Error' not in news.title and 'Correction' not in news.title]
+
+
 async def __headless_maint_update():
     await bot.wait_until_ready()
 
@@ -248,7 +253,7 @@ async def __headless_maint_update():
             log.error('failed to fetch steam news stream')
         else:
             try:
-                update_news = [news for news in feed.entries if 'Scheduled Update Notice' in news.title]
+                update_news = __get_scheduled_update_news(feed.entries)
 
                 curr_news = update_news[0]
                 if 'curr maint' not in data['maint'] or data['maint']['curr maint'] != curr_news.title:
@@ -259,6 +264,7 @@ async def __headless_maint_update():
                     log.debug('cached maint up to date')
             except Exception as ex:
                 log.error(f'error during headless maint update: {ex}')
+                raise ex
 
         await asyncio.sleep(MAINT_UPDATE_LOOP_TIMER)
 
@@ -276,7 +282,7 @@ async def maint(ctx: discord.ext.commands.Context):
         await ctx.send('failed to fetch steam news stream')
         return
 
-    update_news = [news for news in feed.entries if 'Scheduled Update Notice' in news.title]
+    update_news = __get_scheduled_update_news(feed.entries)
     if len(update_news) == 0:
         await ctx.send('no recent scheduled updates found')
         return
