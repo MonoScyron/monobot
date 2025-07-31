@@ -758,16 +758,22 @@ def __roll_cain(original_msg: discord.Message, message: str, dice: int, is_risky
 
 
 def __roll_wildsea(original_msg: discord.Message, message: str, cut: int, dice: int, sort_dice: bool, sides: int = 6):
-    if cut > 0:
-        if dice - cut <= 0:
-            if random.random() < .1:
-                return (f'{original_msg.author.mention}, you cut all your dice for a **{wildsea_dict[1]}** like the '
-                        f'fool you are')
-            else:
-                return f'{original_msg.author.mention}, you cut all your dice for a **{wildsea_dict[1]}**'
-
     if sides != 6:
         return __roll_custom(original_msg, message, dice, sort_dice, sides)
+
+    if dice - cut <= 0:
+        pool = [random.randint(1, 6)]
+        fval = max(pool)
+        fstr = (f'{original_msg.author.mention}, you rolled {dice}d'
+                f' for a **{wildsea_dict[fval] if fval < 6 else wildsea_dict[fval - 1]}**'
+                f'{f"; roll for `{message}`" if message else ""}.')
+        fstr += f' [`{dice}d`: **{fval}**; '
+        for x in (sorted(pool, reverse=True) if sort_dice else pool):
+            fstr += f'`{x}`, '
+        fstr = fstr[:-2] + "]"
+        fstr += """```ansi
+[1mThis roll will have greater consequences and/or worse positioning[0m```"""
+        return fstr
 
     if dice > 0:
         pool = [random.randint(1, 6) for _ in range(dice)]
