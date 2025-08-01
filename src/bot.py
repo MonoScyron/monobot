@@ -185,7 +185,7 @@ async def help(ctx: discord.ext.commands.Context):
         for command in sorted(bot.commands, key=lambda c: c.name):
             help_message += f"**{COMMAND_PREFIX}{command.name}**: {command.help or 'no description provided'}\n"
         help_message += f'`or you can {COMMAND_PREFIX}help CMD to learn more about a specific command`'
-        await ctx.send(help_message)
+        await ctx.reply(help_message, mention_author=False)
         return
 
     cmd_name = cmd[1].strip()
@@ -203,9 +203,9 @@ async def help(ctx: discord.ext.commands.Context):
                 help_msg += f' {COMMAND_PREFIX}{usage} |'
             help_msg = f'{help_msg[:-2]}'
 
-        await ctx.send(help_msg)
+        await ctx.reply(help_msg, mention_author=False)
     else:
-        await ctx.send(f'command "{cmd_name}" not found')
+        await ctx.reply(f'command "{cmd_name}" not found', mention_author=False)
 
 
 if not DEBUG:
@@ -274,17 +274,17 @@ async def __headless_maint_update():
 @bot.command(help='get time of Limbus maintenance', usage=['maint'])
 async def maint(ctx: discord.ext.commands.Context):
     if random.random() < 0.02:
-        await ctx.send('wouldnt you like to know, pisserboy?')
+        await ctx.reply('wouldnt you like to know, pisserboy?', mention_author=False)
         return
 
     feed = feedparser.parse(rss_url)
     if feed.bozo:
-        await ctx.send('failed to fetch steam news stream')
+        await ctx.reply('failed to fetch steam news stream', mention_author=False)
         return
 
     update_news = __get_scheduled_update_news(feed.entries)
     if len(update_news) == 0:
-        await ctx.send('no recent scheduled updates found')
+        await ctx.reply('no recent scheduled updates found', mention_author=False)
         return
 
     curr_news = update_news[0]
@@ -308,42 +308,45 @@ async def maint(ctx: discord.ext.commands.Context):
     from_timestamp = int(from_time.timestamp())
     to_timestamp = int(to_time.timestamp())
     if now < from_timestamp:
-        await ctx.send(f'the next maintenance begins <t:{from_timestamp}:R> at <t:{from_timestamp}> and ends at '
-                       f'<t:{to_timestamp}>')
+        await ctx.reply(f'the next maintenance begins <t:{from_timestamp}:R> at <t:{from_timestamp}> and ends at '
+                        f'<t:{to_timestamp}>')
     elif from_timestamp <= now < to_timestamp:
-        await ctx.send(f'the current maintenance ends <t:{to_timestamp}:R> at <t:{to_timestamp}>')
+        await ctx.reply(f'the current maintenance ends <t:{to_timestamp}:R> at <t:{to_timestamp}>',
+                        mention_author=False)
     else:
-        await ctx.send(f'the last maintenance ended <t:{to_timestamp}:R> at <t:{to_timestamp}>')
+        await ctx.reply(f'the last maintenance ended <t:{to_timestamp}:R> at <t:{to_timestamp}>', mention_author=False)
 
 
 @bot.command(help='forces all messages to start with f (admins only)')
 async def touchsonar(ctx: discord.ext.commands.Context, *, msg=''):
     if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == OWNER_ID:
-        await ctx.send(f'turning on touch sonar can only be done by admins & mono')
+        await ctx.reply(f'turning on touch sonar can only be done by admins & mono', mention_author=False)
         return
 
     global stupid_fucking_pillar
     if (ctx.guild.id in stupid_fucking_pillar and
             not stupid_fucking_pillar[ctx.guild.id]['status'] == GuildStatus.TOUCHSONAR):
-        await ctx.send('another status is currently being applied to this server!')
+        await ctx.reply('another status is currently being applied to this server!', mention_author=False)
     elif ctx.guild.id in stupid_fucking_pillar:
         del stupid_fucking_pillar[ctx.guild.id]
-        await ctx.send('touch based sonar now optional')
+        await ctx.reply('touch based sonar now optional', mention_author=False)
     else:
         stupid_fucking_pillar[ctx.guild.id] = {
             'status': GuildStatus.TOUCHSONAR,
             'start': datetime.now().timestamp()
         }
-        await ctx.send('touch based sonar now enforced')
+        await ctx.reply('touch based sonar now enforced', mention_author=False)
 
 
 @bot.command(help='chooses from list of comma-separated choices', usage=['choose CHOICE, CHOICE, CHOICE, ...'])
 async def choose(ctx: discord.ext.commands.Context, *, msg=''):
     split = [x.strip() for x in ctx.message.content[7:].split(',')]
     if len(split) == 0:
-        await ctx.send("you'll need to give me a list of comma-separated choices for me to choose from")
+        await ctx.reply("you'll need to give me a list of comma-separated choices for me to choose from",
+                        mention_author=False)
     else:
-        await ctx.send(f'{ctx.message.author.mention}, i choose `{random.choice(split)}` for you')
+        await ctx.reply(f'{ctx.message.author.mention}, i choose `{random.choice(split)}` for you',
+                        mention_author=False)
 
 
 class RollModeEnum(Enum):
@@ -377,7 +380,7 @@ async def __remove_local_roll_mode(ctx: discord.ext.commands.Context):
         del data['roll mode'][f'{ctx.guild.id}']['category'][f'{ctx.channel.category.id}']
         await ctx.send('removing local rolling mode...')
     except KeyError:
-        await ctx.send("local rolling mode doesn't exist!")
+        await ctx.reply("local rolling mode doesn't exist!", mention_author=False)
 
 
 @bot.command(help='set rolling mode of the server/category (channel managers only)',
@@ -389,13 +392,14 @@ async def mode(ctx: discord.ext.commands.Context, *, msg=''):
             send_str = f'current server rolling mode: "{data["roll mode"][str(ctx.guild.id)]["server"]}"'
             if f'{ctx.channel.category.id}' in data['roll mode'][str(ctx.guild.id)]['category']:
                 send_str += f'\ncurrent category rolling mode: "{data["roll mode"][str(ctx.guild.id)]["category"][str(ctx.channel.category.id)]}"'
-            await ctx.send(send_str)
+            await ctx.reply(send_str, mention_author=False)
         else:
             await __default_mode(ctx.message)
         return
 
     if not ctx.author.guild_permissions.manage_channels and not f'{ctx.author.id}' == OWNER_ID:
-        await ctx.send(f'setting the rolling mode of this server can only be done by channel managers & mono')
+        await ctx.reply(f'setting the rolling mode of this server can only be done by channel managers & mono',
+                        mention_author=False)
         return
 
     mode = split[1]
@@ -408,7 +412,8 @@ async def mode(ctx: discord.ext.commands.Context, *, msg=''):
         server_scope = False
 
     if mode not in modes:
-        await ctx.send(f'mode does not exist!\nallowed rolling modes: *{", ".join(sorted(modes))}*')
+        await ctx.reply(f'mode does not exist!\nallowed rolling modes: *{", ".join(sorted(modes))}*',
+                        mention_author=False)
     else:
         if server_scope:
             data['roll mode'][f'{ctx.guild.id}']['server'] = mode
@@ -421,14 +426,14 @@ async def mode(ctx: discord.ext.commands.Context, *, msg=''):
         with open('data.json', 'w') as file:
             json.dump(data, file)
         if server_scope:
-            await ctx.send(f'successfully set rolling mode of this server to "{mode}"')
+            await ctx.reply(f'successfully set rolling mode of this server to "{mode}"', mention_author=False)
         else:
-            await ctx.send(f'successfully set rolling mode of this category to "{mode}"')
+            await ctx.reply(f'successfully set rolling mode of this category to "{mode}"', mention_author=False)
 
 
 @bot.command(help='good advice')
 async def touchgrass(ctx: discord.ext.commands.Context, *, msg=''):
-    await ctx.send('https://hard-drive.net/hd/video-games/top-10-grasses-to-go-touch/')
+    await ctx.reply('https://hard-drive.net/hd/video-games/top-10-grasses-to-go-touch/', mention_author=False)
 
 
 @bot.command(help='uwu someone by replying to them or uwu your own message', usage=['uwu', 'uwu MSG'])
@@ -448,7 +453,7 @@ async def nodice(message: discord.Message):
         'you think i can roll null dice?',
         'did you forget to write something there'
     ]
-    await message.channel.send(f'{message.author.mention} {random.choice(choice)}')
+    await message.reply(f'{message.author.mention} {random.choice(choice)}', mention_author=False)
 
 
 num_to_word = {
@@ -470,13 +475,14 @@ num_to_word = {
 async def poll(ctx: discord.ext.commands.Context, *, msg=''):
     options = [s.strip() for s in msg.strip().split(',') if len(s) > 0]
     if len(options) > 9:
-        await ctx.send('do you really need that many options in a poll?')
+        await ctx.reply('do you really need that many options in a poll?', mention_author=False)
         return
     if len(options) < 1:
-        await ctx.send('you gonna put any options in that poll? (ps. you can add them through a comma-separated list)')
+        await ctx.reply('you gonna put any options in that poll? (ps. you can add them through a comma-separated list)',
+                        mention_author=False)
         return
     if len(options) == 1:
-        await ctx.send(
+        await ctx.reply(
             'a poll with only one option is kinda boring isn\'t it? (ps. you can add more through a comma-separated list)'
         )
         return
@@ -484,7 +490,7 @@ async def poll(ctx: discord.ext.commands.Context, *, msg=''):
     message = ''
     for i in range(len(options)):
         message += f'{num_to_word[i + 1]}: {options[i]}\n'
-    sent_msg = await ctx.send(message)
+    sent_msg = await ctx.reply(message, mention_author=False)
 
     for i in range(len(options)):
         await sent_msg.add_reaction(f'{num_to_word[i + 1]}')
@@ -509,22 +515,22 @@ async def pee(ctx: discord.ext.commands.Context, *, msg=''):
     if ctx.message.mentions:
         author_pfp = await ctx.message.mentions[0].display_avatar.with_static_format('png').read()
         pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-        await ctx.send(file=discord.File(make_pee(), filename='boom.gif'))
+        await ctx.reply(file=discord.File(make_pee(), filename='pee.png'), mention_author=False)
     elif ctx.message.reference:
         ref = await ctx.fetch_message(ctx.message.reference.message_id)
         author_pfp = await ref.author.display_avatar.with_static_format('png').read()
         pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-        await ctx.send(file=discord.File(make_pee(), filename='boom.gif'))
+        await ctx.reply(file=discord.File(make_pee(), filename='pee.png'), mention_author=False)
     else:
         author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
         pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-        await ctx.send(file=discord.File(make_pee(), filename='gun.png'))
+        await ctx.reply(file=discord.File(make_pee(), filename='pee.png'), mention_author=False)
 
 
 @bot.command(help='mention mono')
 @commands.cooldown(5, 300)
 async def a(ctx: discord.ext.commands.Context, *, msg=''):
-    await ctx.send(f'<@{OWNER_ID}>')
+    await ctx.reply(f'<@{OWNER_ID}>', mention_author=False)
 
 
 @bot.command(help='give yourself a gun, as a treat')
@@ -537,7 +543,7 @@ async def gun(ctx: discord.ext.commands.Context, *, msg=''):
     pfp_bytes = io.BytesIO()
     pfp.save(pfp_bytes, format="PNG")
     pfp_bytes.seek(0)
-    await ctx.send(file=discord.File(pfp_bytes, filename='gun.png'))
+    await ctx.reply(file=discord.File(pfp_bytes, filename='gun.png'), mention_author=False)
 
 
 @bot.command(help='show the bot a bit of love (some exceptions apply)')
@@ -600,14 +606,14 @@ async def explode(ctx: discord.ext.commands.Context, *, msg=""):
             else:
                 author_pfp = await ref.author.display_avatar.with_static_format('png').read()
         pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-        await ctx.send(message, file=discord.File(make_explode(pfp), filename='boom.gif'))
+        await ctx.reply(message, file=discord.File(make_explode(pfp), filename='boom.gif'), mention_author=False)
     else:
         count = 1
         if len(msg) >= 1:
             count = int(msg)
 
         if count > 30:
-            await ctx.send('i do not permit you to blow up the server')
+            await ctx.reply('i do not permit you to blow up the server', mention_author=False)
             count = 30
         message = ''
         limit = 0
@@ -615,12 +621,12 @@ async def explode(ctx: discord.ext.commands.Context, *, msg=""):
             message += '<:explode:1333259731640258581> '
             limit += 1
             if limit >= 30:
-                await ctx.send(message)
+                await ctx.reply(message, mention_author=False)
                 message = ''
                 limit = 0
 
         if len(message) > 0:
-            await ctx.send(message)
+            await ctx.reply(message, mention_author=False)
 
 
 def __has_duplicates(lst):
@@ -694,13 +700,13 @@ async def hate(ctx: discord.ext.commands.Context, *, msg=""):
 
     roll_mode = __get_curr_roll_mode(ctx.message)
     if roll_mode == RollModeEnum.WILDSEAS.value:
-        await ctx.send(__hate_wildseas(ctx, pool, fval))
+        await ctx.reply(__hate_wildseas(ctx, pool, fval), mention_author=False)
     elif roll_mode == RollModeEnum.FITD.value:
-        await ctx.send(__hate_fitd(ctx, pool, fval))
+        await ctx.reply(__hate_fitd(ctx, pool, fval), mention_author=False)
     elif roll_mode == RollModeEnum.CAIN.value:
-        await ctx.send(__hate_cain(ctx, pool, fval))
+        await ctx.reply(__hate_cain(ctx, pool, fval), mention_author=False)
     else:
-        await ctx.send("invalid roll mode: " + roll_mode)
+        await ctx.reply("invalid roll mode: " + roll_mode, mention_author=False)
 
 
 def __roll_risk_msg():
@@ -714,9 +720,9 @@ def __roll_risk_msg():
 @bot.command(aliases=['r'], help='roll risk (only usable with Cain)')
 async def risk(ctx: discord.ext.commands.Context, *, msg=""):
     if __get_curr_roll_mode(ctx.message) == RollModeEnum.CAIN.value:
-        await ctx.send(__roll_risk_msg())
+        await ctx.reply(__roll_risk_msg(), mention_author=False)
     else:
-        await ctx.send('only available for "cain" roll mode')
+        await ctx.reply('only available for "cain" roll mode', mention_author=False)
 
 
 def __roll_cain(original_msg: discord.Message, message: str, dice: int, is_risky: bool, is_hard: bool, sort_dice: bool,
@@ -974,10 +980,10 @@ async def roll_dice(message: discord.Message) -> bool:
             difficulty = match.group(5).strip() if match.group(5) else ""
             msg = match.group(6).strip().replace('#', '')
             if dice and dice > 100:
-                await message.channel.send('in what world do you need to roll that many dice?')
+                await message.reply('in what world do you need to roll that many dice?', mention_author=False)
                 return True
-            await message.channel.send(__roll_cain(message, msg, dice, 'r' in difficulty, 'h' in difficulty,
-                                                   sort_dice, sides))
+            await message.reply(__roll_cain(message, msg, dice, 'r' in difficulty, 'h' in difficulty,
+                                            sort_dice, sides), mention_author=False)
             return True
         elif ((match := re.match(r'~(\d+)[dD](\d*)(!?)(\s?[dD]([0-9]))?($| ?#.*)', message.content)) and
               roll_mode == RollModeEnum.HUNTER.value):
@@ -987,9 +993,9 @@ async def roll_dice(message: discord.Message) -> bool:
             desp_dice = int(match.group(5).strip()) if match.group(5) else 0
             msg = match.group(6).strip().replace('#', '')
             if dice and dice > 100:
-                await message.channel.send('in what world do you need to roll that many dice?')
+                await message.reply('in what world do you need to roll that many dice?', mention_author=False)
                 return True
-            await message.channel.send(__roll_hunter(message, msg, dice, desp_dice, sort_dice, sides))
+            await message.reply(__roll_hunter(message, msg, dice, desp_dice, sort_dice, sides), mention_author=False)
             return True
         elif ((match := re.match(r'~(-?)(\d+)[dD](\d*)(!?)( ?-\d*)?($| ?#.*)', message.content)) and
               (roll_mode == RollModeEnum.WILDSEAS.value or
@@ -1004,31 +1010,32 @@ async def roll_dice(message: discord.Message) -> bool:
             cut = int(match.group(5).strip().replace('-', '')) if match.group(5) else 0
             msg = match.group(6).strip().replace('#', '')
             if dice and dice > 100:
-                await message.channel.send('in what world do you need to roll that many dice?')
+                await message.reply('in what world do you need to roll that many dice?', mention_author=False)
                 return True
             if roll_mode == RollModeEnum.FITD.value:
-                await message.channel.send(__roll_fitd(message, msg, dice, sort_dice, sides=sides))
+                await message.reply(__roll_fitd(message, msg, dice, sort_dice, sides=sides), mention_author=False)
             elif roll_mode == RollModeEnum.WILDSEAS.value:
-                await message.channel.send(__roll_wildsea(message, msg, cut, dice, sort_dice, sides=sides))
+                await message.reply(__roll_wildsea(message, msg, cut, dice, sort_dice, sides=sides),
+                                    mention_author=False)
             else:
-                await message.channel.send(__roll_persona(message, msg, dice, sort_dice, sides=sides))
+                await message.reply(__roll_persona(message, msg, dice, sort_dice, sides=sides), mention_author=False)
             return True
 
         # continue executing other possible commands
         return False
     except ValueError as e:
         log.warning(f'ValueError when rolling: {e}')
-        await message.channel.send("that doesnt look like a valid integer")
+        await message.reply("that doesnt look like a valid integer", mention_author=False)
         return True
 
 
 @bot.command(help="sends monobot's invite link (mono only)")
 async def invite(ctx: discord.ext.commands.Context, *, msg=""):
     if ctx.message.author.id == int(OWNER_ID):
-        await ctx.send(f'use this [invite](https://discord.com/oauth2/authorize?client_id=1208179071624941578'
-                       f'&permissions=8&scope=bot) to add monobot to your server')
+        await ctx.reply(f'use this [invite](https://discord.com/oauth2/authorize?client_id=1208179071624941578'
+                        f'&permissions=8&scope=bot) to add monobot to your server')
     else:
-        await ctx.send('this method is only usable by mono')
+        await ctx.reply('this method is only usable by mono', mention_author=False)
 
 
 bot.run(env.get("CLIENT_TOKEN"))
