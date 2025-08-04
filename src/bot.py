@@ -5,7 +5,9 @@ import math
 import random
 import re
 import logging
+import uuid
 
+import dateparser
 import dotenv
 import discord
 import uwuipy
@@ -13,7 +15,7 @@ import feedparser
 import easyocr
 
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timedelta
 from dateutil import parser, tz
 from PIL import Image
 from discord.ext import commands
@@ -43,7 +45,30 @@ intents.message_content = True
 bot = commands.AutoShardedBot(command_prefix='', intents=intents, help_command=None)
 
 stupid_fucking_pillar = dict()
-data = {'maint': {}, 'roll mode': {}}
+data = {
+    'maint': {
+        # curr maint: steam post title
+        # from time: str
+        # to time: str
+        # date: str
+    },
+    'roll mode': {
+        # guild id
+        #    server: mode str
+        #    category:
+        #        channel id: mode str
+    },
+    'reminders': {
+        # reminder id:
+        #   original channel id
+        #   original message id
+        #   posix timestamp
+        #   author
+        #   message
+    }
+}
+alarms = {}
+
 try:
     with open('data.json', 'r') as file:
         data = json.load(file)
@@ -53,6 +78,10 @@ except Exception as e:
         json.dump(data, file)
 
 uwu_factory = uwuipy.Uwuipy(face_chance=.075)
+
+if not DEBUG:
+    ocr_reader = easyocr.Reader(['en'])
+    rss_url = 'https://store.steampowered.com/feeds/news/app/1973530/'
 
 
 class GuildStatus(Enum):
@@ -126,6 +155,36 @@ async def on_ready():
 
     if not DEBUG:
         asyncio.create_task(__headless_maint_update())
+
+        bad_reminders = []
+        for reminder_id, reminder in data['reminders'].items():
+            try:
+                channel = bot.get_channel(int(reminder['channel id']))
+                if not channel:
+                    channel = await bot.fetch_channel(int(reminder['channel id']))
+
+                msg = await channel.fetch_message(int(reminder['message id']))
+
+                author = channel.guild.get_member(int(reminder['author id']))
+                if not author:
+                    author = await bot.fetch_user(int(reminder['author id']))
+
+                alarms[str(reminder_id)] = asyncio.create_task(
+                    __reminder_task(reminder_id,
+                                    msg,
+                                    datetime.fromtimestamp(reminder['timestamp']),
+                                    author,
+                                    reminder['alarm message'])
+                )
+            except Exception as e:
+                bad_reminders.append(str(reminder_id))
+                log.error(e)
+
+        for k in bad_reminders:
+            del data['reminders'][k]
+
+        with open('data.json', 'w') as file:
+            json.dump(data, file)
 
 
 @bot.event
@@ -208,9 +267,86 @@ async def help(ctx: discord.ext.commands.Context):
         await ctx.reply(f'command "{cmd_name}" not found', mention_author=False)
 
 
-if not DEBUG:
-    ocr_reader = easyocr.Reader(['en'])
-    rss_url = 'https://store.steampowered.com/feeds/news/app/1973530/'
+async def __reminder_task(reminder_id: uuid.UUID,
+                          msg: discord.Message,
+                          timer: datetime,
+                          author: discord.Member,
+                          message: str):
+    try:
+        log.info(f'{reminder_id} - {timer} from {author.id}: {message}')
+
+        if (timer - datetime.now()).total_seconds() > 1:
+            await asyncio.sleep((timer - datetime.now()).total_seconds())
+
+            log.debug(f'{reminder_id} executing')
+            if message:
+                await msg.reply(f'{author.mention} - {message}')
+            else:
+                await msg.reply(f'{author.mention}')
+    except asyncio.CancelledError:
+        log.debug(f'reminder {reminder_id} already cancelled')
+    except discord.errors.HTTPException as e:
+        log.debug(f'reminder {reminder_id} already cancelled via deletion')
+    except Exception as e:
+        log.error(e)
+        raise e
+    finally:
+        del alarms[str(reminder_id)]
+        del data['reminders'][str(reminder_id)]
+        with open('data.json', 'w') as file:
+            json.dump(data, file)
+
+
+def __to_discord_timestamps(ts: datetime):
+    return f'<t:{int(ts.timestamp())}> (<t:{int(ts.timestamp())}:R>)'
+
+
+# TODO: Add help tips for this function
+@bot.command(aliases=['reminder', 'remindme', 'alarm', 're'])
+async def remind(ctx: commands.Context, *, msg=''):
+    split_msg = re.split('#', msg)
+    alarm_timestamp = dateparser.parse(split_msg[0])
+
+    if alarm_timestamp - datetime.now() > timedelta(days=90):
+        await ctx.reply('cannot set reminders more than 90 days in the future!', mention_author=False)
+        return
+
+    reminder_id = uuid.uuid4()
+
+    reminder_data = {
+        'channel id': ctx.channel.id,
+        'message id': ctx.message.id,
+        'timestamp': alarm_timestamp.timestamp(),
+        'author id': ctx.author.id,
+        'alarm message': ''
+    }
+
+    alarm_message = ''
+    if len(split_msg) >= 2:
+        alarm_message = '#'.join(split_msg[1:])
+        reminder_data['alarm message'] = alarm_message
+
+    alarms[str(reminder_id)] = asyncio.create_task(__reminder_task(reminder_id,
+                                                                   ctx.message,
+                                                                   alarm_timestamp,
+                                                                   ctx.author,
+                                                                   alarm_message))
+    data['reminders'][str(reminder_id)] = reminder_data
+
+    await ctx.reply(f'added reminder for {__to_discord_timestamps(alarm_timestamp)}\nto cancel reminder, delete this message',
+                    mention_author=False)
+    with open('data.json', 'w') as file:
+        json.dump(data, file)
+
+
+# TODO: Add help tips for this function
+@bot.command(aliases=['ts'])
+async def timestamp(ctx: commands.Context, *, msg=''):
+    parsed = dateparser.parse(msg)
+    if parsed:
+        await ctx.reply(__to_discord_timestamps(parsed))
+    else:
+        await ctx.reply('no timestamp parsed')
 
 
 def __maint_update(curr_news):
@@ -968,6 +1104,7 @@ def __roll_custom(original_msg: discord.Message, message: str, dice: int, sort_d
     return fstr
 
 
+# TODO: Add help tips (esp syntax) for this function
 async def roll_dice(message: discord.Message) -> bool:
     """Return true if roll pattern matched/do not continue"""
     try:
