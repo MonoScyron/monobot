@@ -344,9 +344,9 @@ async def remind(ctx: commands.Context, *, msg=''):
 async def timestamp(ctx: commands.Context, *, msg=''):
     parsed = dateparser.parse(msg)
     if parsed:
-        await ctx.reply(__to_discord_timestamps(parsed))
+        await ctx.reply(__to_discord_timestamps(parsed), mention_author=False)
     else:
-        await ctx.reply('no timestamp parsed')
+        await ctx.reply('no timestamp in message!', mention_author=False)
 
 
 def __maint_update(curr_news):
@@ -445,7 +445,7 @@ async def maint(ctx: discord.ext.commands.Context):
     to_timestamp = int(to_time.timestamp())
     if now < from_timestamp:
         await ctx.reply(f'the next maintenance begins <t:{from_timestamp}:R> at <t:{from_timestamp}> and ends at '
-                        f'<t:{to_timestamp}>')
+                        f'<t:{to_timestamp}>', mention_author=False)
     elif from_timestamp <= now < to_timestamp:
         await ctx.reply(f'the current maintenance ends <t:{to_timestamp}:R> at <t:{to_timestamp}>',
                         mention_author=False)
