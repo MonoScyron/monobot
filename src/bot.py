@@ -301,8 +301,9 @@ def __to_discord_timestamps(ts: datetime):
     return f'<t:{int(ts.timestamp())}> (<t:{int(ts.timestamp())}:R>)'
 
 
-# TODO: Add help tips for this function
-@bot.command(aliases=['reminder', 'remindme', 'alarm', 're'])
+@bot.command(aliases=['reminder', 'remindme', 'alarm', 're'],
+             help='set a reminder',
+             usage=['remind TIME', 'remind TIME #MESSAGE'])
 async def remind(ctx: commands.Context, *, msg=''):
     split_msg = re.split('#', msg)
     alarm_timestamp = dateparser.parse(split_msg[0])
@@ -339,8 +340,9 @@ async def remind(ctx: commands.Context, *, msg=''):
         json.dump(data, file)
 
 
-# TODO: Add help tips for this function
-@bot.command(aliases=['ts'])
+@bot.command(aliases=['ts'],
+             help='translate a time into a discord timestamp',
+             usage=['timestamp TIME'])
 async def timestamp(ctx: commands.Context, *, msg=''):
     parsed = dateparser.parse(msg)
     if parsed:
@@ -407,7 +409,7 @@ async def __headless_maint_update():
     log.info(f'headless maint update loop close')
 
 
-@bot.command(help='get time of Limbus maintenance', usage=['maint'])
+@bot.command(help='get time of Limbus maintenance')
 async def maint(ctx: discord.ext.commands.Context):
     if random.random() < 0.02:
         await ctx.reply('wouldnt you like to know, pisserboy?', mention_author=False)
