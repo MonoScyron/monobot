@@ -190,7 +190,8 @@ async def on_ready():
                 alarms[str(reminder_id)] = asyncio.create_task(
                     __reminder_task(reminder_id,
                                     msg,
-                                    datetime.fromtimestamp(reminder['timestamp']),
+                                    datetime.fromtimestamp(reminder['timestamp']).astimezone(pytz.timezone(
+                                        data['timezones'][str(reminder['author id'])])),
                                     author,
                                     reminder['alarm message'])
                 )
@@ -285,6 +286,17 @@ async def help(ctx: discord.ext.commands.Context):
         await ctx.reply(f'command "{cmd_name}" not found', mention_author=False)
 
 
+def __get_user_curr_time(user_id: int) -> datetime:
+    return datetime.now().astimezone(pytz.timezone(data['timezones'][str(user_id)]))
+
+
+def __del_reminder(reminder_id: uuid.UUID):
+    del alarms[str(reminder_id)]
+    del data['reminders'][str(reminder_id)]
+    with open('data.json', 'w') as file:
+        json.dump(data, file)
+
+
 async def __reminder_task(reminder_id: uuid.UUID,
                           msg: discord.Message,
                           timer: datetime,
@@ -293,34 +305,37 @@ async def __reminder_task(reminder_id: uuid.UUID,
     try:
         log.info(f'{reminder_id} - {timer} from {author.id}: {message}')
 
-        if (timer - datetime.now()).total_seconds() > 1:
-            await asyncio.sleep((timer - datetime.now()).total_seconds())
+        time_left = (timer - __get_user_curr_time(author.id))
+        if time_left.total_seconds() > 15:
+            await asyncio.sleep(time_left.total_seconds())
 
             log.debug(f'{reminder_id} executing')
             if message:
                 await msg.reply(f'{author.mention} - {message}')
             else:
                 await msg.reply(f'{author.mention}')
+
+        __del_reminder(reminder_id)
     except asyncio.CancelledError:
+        # FIXME: This currently deletes tasks on bot shutdown as well
         log.debug(f'reminder {reminder_id} already cancelled')
-    except discord.errors.HTTPException as e:
+        __del_reminder(reminder_id)
+    except discord.errors.HTTPException:
         log.debug(f'reminder {reminder_id} already cancelled via deletion')
+        __del_reminder(reminder_id)
     except Exception as e:
-        log.error(e)
+        __del_reminder(reminder_id)
         raise e
-    finally:
-        del alarms[str(reminder_id)]
-        del data['reminders'][str(reminder_id)]
-        with open('data.json', 'w') as file:
-            json.dump(data, file)
 
 
 def __parse_timestamp(msg: str, user_id: int) -> datetime:
     if str(user_id) not in data['timezones']:
+        data['timezones'][str(user_id)] = 'UTC'
         user_tz = pytz.UTC
     else:
         user_tz = pytz.timezone(data['timezones'][str(user_id)])
-
+    with open('data.json', 'w') as file:
+        json.dump(data, file)
     return user_tz.localize(dateparser.parse(msg))
 
 
@@ -335,7 +350,7 @@ async def remind(ctx: commands.Context, *, msg=''):
     split_msg = re.split('#', msg)
     alarm_timestamp = __parse_timestamp(split_msg[0], ctx.author.id)
 
-    if alarm_timestamp - datetime.now() > timedelta(days=90):
+    if alarm_timestamp - __get_user_curr_time(ctx.author.id) > timedelta(days=90):
         await ctx.reply('cannot set reminders more than 90 days in the future!', mention_author=False)
         return
 
@@ -409,7 +424,7 @@ async def timezone(ctx: commands.Context, *, msg=''):
     with open('data.json', 'w') as file:
         json.dump(data, file)
 
-    await ctx.reply('timezone added!', mention_author=False)
+    await ctx.reply('timezone changed!', mention_author=False)
 
 
 def __maint_update(curr_news):
