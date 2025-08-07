@@ -10,6 +10,7 @@ import uuid
 import dateparser
 import dotenv
 import discord
+import pytz
 import uwuipy
 import feedparser
 import easyocr
@@ -21,10 +22,17 @@ from PIL import Image
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown
 
-# TODO: Oh my god this is so bad I need to make this a proper class before GOD HIMSELF SMITES ME
-
 PFP_SIZE = (200, 200)
 MAINT_UPDATE_LOOP_TIMER = 5 * 60  # update every 5 mins
+
+TIMEZONES = ['Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Monrousing', 'America/Anchorage',
+             'America/Chicago', 'America/Denver', 'America/Edmonton', 'America/Jamaica', 'America/Los_Angeles',
+             'America/Mexico City', 'America/Montreal', 'America/New_York', 'America/Phoenix', 'America/Puerto_Rico',
+             'America/Sao Paulo', 'America/Toronto', 'America/Vancouver', 'Asia/Hong_Kong', 'Asia/Jerusalem',
+             'Asia/Manila', 'Asia/Seoul', 'Asia/Taipei', 'Asia/Tokyo', 'Atlantic/Reykjavik', 'Australia/Perth',
+             'Australia/Sydney', 'Europe/Athens', 'Europe/Berlin', 'Europe/Brussels', 'Europe/Copenhagen',
+             'Europe/Lisbon', 'Europe/London', 'Europe/Madrid', 'Europe/Moscow', 'Europe/Paris', 'Europe/Prague',
+             'Europe/Rome', 'Europe/Warsaw', 'Pacific/Auckland', 'Pacific/Guam', 'Pacific/Honolulu', 'UTC']
 
 env = dotenv.dotenv_values()
 COMMAND_PREFIX = env.get('PREFIX')
@@ -45,9 +53,12 @@ intents.message_content = True
 bot = commands.AutoShardedBot(command_prefix='', intents=intents, help_command=None)
 
 stupid_fucking_pillar = dict()
+alarms = {}
+
+# TODO: Setup sqlite for data
 data = {
     'maint': {
-        # curr maint: steam post title
+        # curr maint: steam post title str
         # from time: str
         # to time: str
         # date: str
@@ -60,18 +71,25 @@ data = {
     },
     'reminders': {
         # reminder id:
-        #   original channel id
-        #   original message id
-        #   posix timestamp
-        #   author
-        #   message
+        #   original channel id: int
+        #   original message id: int
+        #   posix timestamp: float
+        #   author id: int
+        #   message: str
+    },
+    'timezones': {
+        # user id: timezone str
     }
 }
-alarms = {}
+
+data_keys = data.keys()
 
 try:
     with open('data.json', 'r') as file:
         data = json.load(file)
+    for k in data_keys:
+        if k not in data:
+            data[k] = {}
 except Exception as e:
     log.warning(f'Exception when loading data, resetting: {e}')
     with open('data.json', 'w') as file:
@@ -297,6 +315,15 @@ async def __reminder_task(reminder_id: uuid.UUID,
             json.dump(data, file)
 
 
+def __parse_timestamp(msg: str, user_id: int) -> datetime:
+    if str(user_id) not in data['timezones']:
+        user_tz = pytz.UTC
+    else:
+        user_tz = pytz.timezone(data['timezones'][str(user_id)])
+
+    return user_tz.localize(dateparser.parse(msg))
+
+
 def __to_discord_timestamps(ts: datetime):
     return f'<t:{int(ts.timestamp())}> (<t:{int(ts.timestamp())}:R>)'
 
@@ -306,7 +333,7 @@ def __to_discord_timestamps(ts: datetime):
              usage=['remind TIME', 'remind TIME #MESSAGE'])
 async def remind(ctx: commands.Context, *, msg=''):
     split_msg = re.split('#', msg)
-    alarm_timestamp = dateparser.parse(split_msg[0])
+    alarm_timestamp = __parse_timestamp(split_msg[0], ctx.author.id)
 
     if alarm_timestamp - datetime.now() > timedelta(days=90):
         await ctx.reply('cannot set reminders more than 90 days in the future!', mention_author=False)
@@ -344,11 +371,57 @@ async def remind(ctx: commands.Context, *, msg=''):
              help='translate a time into a discord timestamp',
              usage=['timestamp TIME'])
 async def timestamp(ctx: commands.Context, *, msg=''):
-    parsed = dateparser.parse(msg)
+    parsed = __parse_timestamp(msg, ctx.author.id)
     if parsed:
         await ctx.reply(__to_discord_timestamps(parsed), mention_author=False)
     else:
         await ctx.reply('no timestamp in message!', mention_author=False)
+
+
+def __pretty_utc(utc_diff: int):
+    try:
+        if int(utc_diff) > 0:
+            utc_diff = f'+{utc_diff}'
+        pretty_utc = f'UTC{utc_diff}'
+    except ValueError:
+        pretty_utc = utc_diff
+    return pretty_utc
+
+
+@bot.command(aliases=['tz'],
+             help="see your timezone in the bot's database, set your timezone as an UTC offset, or see a list of available timezones",
+             usage=['timezone', 'timezone list', 'timezone TIMEZONE', 'timezone INT'])
+async def timezone(ctx: commands.Context, *, msg=''):
+    msg = msg.strip()
+    user_id = str(ctx.author.id)
+
+    if not msg:
+        if user_id in data['timezones']:
+            raw_timezone = data["timezones"][user_id]
+            await ctx.reply(f'your timezone is: {__pretty_utc(raw_timezone)}', mention_author=False)
+        else:
+            await ctx.reply('no timezone found', mention_author=False)
+        return
+
+    if msg == 'list':
+        await ctx.reply(', '.join(TIMEZONES), mention_author=False)
+        return
+
+    try:
+        offset = int(msg)
+    except ValueError:
+        if msg in TIMEZONES:
+            offset = msg
+        else:
+            await ctx.reply('invalid UTC offset or invalid timezone, '
+                            'please give a number between -11 and 11 or a timezone on the list')
+            return
+
+    data['timezones'][user_id] = offset
+    with open('data.json', 'w') as file:
+        json.dump(data, file)
+
+    await ctx.reply('timezone added!', mention_author=False)
 
 
 def __maint_update(curr_news):
