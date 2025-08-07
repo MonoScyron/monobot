@@ -380,7 +380,7 @@ async def timestamp(ctx: commands.Context, *, msg=''):
 
 @bot.command(aliases=['tz'],
              help="see your timezone in the bot's database or see a list of available timezones",
-             usage=['timezone', 'timezone list', 'timezone TIMEZONE', 'timezone INT'])
+             usage=['timezone', 'timezone list', 'timezone TIMEZONE'])
 async def timezone(ctx: commands.Context, *, msg=''):
     msg = msg.strip()
     user_id = str(ctx.author.id)
