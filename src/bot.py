@@ -378,18 +378,8 @@ async def timestamp(ctx: commands.Context, *, msg=''):
         await ctx.reply('no timestamp in message!', mention_author=False)
 
 
-def __pretty_utc(utc_diff: int):
-    try:
-        if int(utc_diff) > 0:
-            utc_diff = f'+{utc_diff}'
-        pretty_utc = f'UTC{utc_diff}'
-    except ValueError:
-        pretty_utc = utc_diff
-    return pretty_utc
-
-
 @bot.command(aliases=['tz'],
-             help="see your timezone in the bot's database, set your timezone as an UTC offset, or see a list of available timezones",
+             help="see your timezone in the bot's database or see a list of available timezones",
              usage=['timezone', 'timezone list', 'timezone TIMEZONE', 'timezone INT'])
 async def timezone(ctx: commands.Context, *, msg=''):
     msg = msg.strip()
@@ -397,8 +387,7 @@ async def timezone(ctx: commands.Context, *, msg=''):
 
     if not msg:
         if user_id in data['timezones']:
-            raw_timezone = data["timezones"][user_id]
-            await ctx.reply(f'your timezone is: {__pretty_utc(raw_timezone)}', mention_author=False)
+            await ctx.reply(f'your timezone is: {data["timezones"][user_id]}', mention_author=False)
         else:
             await ctx.reply('no timezone found', mention_author=False)
         return
@@ -413,8 +402,7 @@ async def timezone(ctx: commands.Context, *, msg=''):
         if msg in TIMEZONES:
             offset = msg
         else:
-            await ctx.reply('invalid UTC offset or invalid timezone, '
-                            'please give a number between -11 and 11 or a timezone on the list')
+            await ctx.reply('invalid timezone, please give a timezone on the list')
             return
 
     data['timezones'][user_id] = offset
