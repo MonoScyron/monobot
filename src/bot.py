@@ -287,7 +287,7 @@ async def help(ctx: discord.ext.commands.Context):
 
 
 def __get_user_curr_time(user_id: int) -> datetime:
-    return datetime.now().astimezone(pytz.timezone(data['timezones'][str(user_id)]))
+    return datetime.now(pytz.timezone(data['timezones'][str(user_id)]))
 
 
 def __del_reminder(reminder_id: uuid.UUID):
@@ -331,12 +331,16 @@ async def __reminder_task(reminder_id: uuid.UUID,
 def __parse_timestamp(msg: str, user_id: int) -> datetime:
     if str(user_id) not in data['timezones']:
         data['timezones'][str(user_id)] = 'UTC'
-        user_tz = pytz.UTC
-    else:
-        user_tz = pytz.timezone(data['timezones'][str(user_id)])
-    with open('data.json', 'w') as file:
-        json.dump(data, file)
-    return user_tz.localize(dateparser.parse(msg))
+        with open('data.json', 'w') as file:
+            json.dump(data, file)
+
+    parsed = dateparser.parse(msg)
+    if not parsed.tzinfo:
+        parsed = dateparser.parse(msg, settings={
+            'TIMEZONE': data['timezones'][str(user_id)],
+            'RETURN_AS_TIMEZONE_AWARE': True
+        })
+    return parsed
 
 
 def __to_discord_timestamps(ts: datetime):
