@@ -255,6 +255,21 @@ async def on_message_edit(before: discord.Message, message: discord.Message):
             log.error(f'error deleting on edit in touchsonar: {e}')
 
 
+ROLL_HELP = """
+syntax key: [these are required] (these are optional)
+\t**fitd mode**: ~[num dice]d(num sides)(! for unsorted rolls) #(message)
+\t\texample: ~4d! #this will roll 4 d6s unsorted
+\t**wildseas mode**: ~[num dice]d(num sides)(! for unsorted rolls) -(num dice to cut) #(message)
+\t\texample: ~3d! -1 #this will roll 3 d6s unsorted with a cut of 1
+\t**cain mode**: ~[num dice]d(num sides)(! for unsorted rolls) (h for hard)(r for risky) #(message)
+\t\texample: ~5d hr #this will roll 5 d6s with hard and risky results
+\t**hunter mode**: ~[num dice]d(num sides)(! for unsorted rolls) (d[num desperation dice]) #(message)
+\t\texample: ~3d d2 #this will roll 3 d10s with 2 d10 desperation dice
+\t**persona mode**: ~[num dice]d(num sides)(! for unsorted rolls) #(message)
+\t\texample: ~4d #this will roll 4 d6s
+"""
+
+
 @bot.command(help='sends this message', usage=['help', 'help CMD'])
 async def help(ctx: discord.ext.commands.Context):
     cmd = ctx.message.content.split()
@@ -262,12 +277,15 @@ async def help(ctx: discord.ext.commands.Context):
         help_message = ''
         for command in sorted(bot.commands, key=lambda c: c.name):
             help_message += f"**{COMMAND_PREFIX}{command.name}**: {command.help or 'no description provided'}\n"
-        help_message += f'`or you can {COMMAND_PREFIX}help CMD to learn more about a specific command`'
+        help_message += (f'`or you can {COMMAND_PREFIX}help CMD to learn more about a specific command or '
+                         f'{COMMAND_PREFIX}help roll to learn rolling syntax`')
         await ctx.reply(help_message, mention_author=False)
         return
 
     cmd_name = cmd[1].strip()
-    if cmd_name in bot.all_commands:
+    if cmd_name == 'roll':
+        await ctx.reply(ROLL_HELP, mention_author=False)
+    elif cmd_name in bot.all_commands:
         help_cmd = bot.all_commands[cmd_name]
         help_msg = f'[{COMMAND_PREFIX}{help_cmd.name} |'
         for alias in help_cmd.aliases:
@@ -1186,7 +1204,6 @@ def __roll_custom(original_msg: discord.Message, message: str, dice: int, sort_d
     return fstr
 
 
-# TODO: Add help tips (esp syntax) for this function
 async def roll_dice(message: discord.Message) -> bool:
     """Return true if roll pattern matched/do not continue"""
     try:
