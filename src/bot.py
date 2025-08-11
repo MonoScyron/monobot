@@ -406,7 +406,8 @@ async def remind(ctx: commands.Context, *, msg=''):
 
 
 @bot.command(aliases=['ts'],
-             help='translate a time into a discord timestamp',
+             help='translate a time into a discord timestamp, '
+                  'can also use relative timestamps like "in 2 days" or "tomorrow at 3pm"',
              usage=['timestamp TIME'])
 async def timestamp(ctx: commands.Context, *, msg=''):
     parsed = __parse_timestamp(msg, ctx.author.id)
@@ -769,9 +770,9 @@ async def a(ctx: discord.ext.commands.Context, *, msg=''):
 @bot.command(help='give yourself a gun, as a treat')
 async def gun(ctx: discord.ext.commands.Context, *, msg=''):
     author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
-    gun = Image.open('./img/gun.png').resize((150, 150))
+    gun_image = Image.open('./img/gun.png').resize((150, 150))
     pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
-    pfp.paste(gun, (90, 50), gun)
+    pfp.paste(gun_image, (90, 50), gun_image)
 
     pfp_bytes = io.BytesIO()
     pfp.save(pfp_bytes, format="PNG")
