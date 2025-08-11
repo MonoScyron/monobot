@@ -64,7 +64,7 @@ data = {
         # date: str
     },
     'roll mode': {
-        # guild id
+        # guild id:
         #    server: mode str
         #    category:
         #        channel id: mode str
@@ -86,10 +86,11 @@ data_keys = data.keys()
 
 try:
     with open('data.json', 'r') as file:
-        data = json.load(file)
+        fetched_data = json.load(file)
     for k in data_keys:
-        if k not in data:
-            data[k] = {}
+        if k not in fetched_data:
+            fetched_data[k] = {}
+    data = fetched_data
 except Exception as e:
     log.warning(f'Exception when loading data, resetting: {e}')
     with open('data.json', 'w') as file:
