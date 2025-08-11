@@ -489,19 +489,15 @@ async def __headless_maint_update():
         if feed.bozo:
             log.error('failed to fetch steam news stream')
         else:
-            try:
-                update_news = __get_scheduled_update_news(feed.entries)
+            update_news = __get_scheduled_update_news(feed.entries)
 
-                curr_news = update_news[0]
-                if 'curr maint' not in data['maint'] or data['maint']['curr maint'] != curr_news.title:
-                    log.info('cached maint news out of date, fetching and parsing online news headlessly...')
-                    __maint_update(curr_news)
-                    log.info('headlessly updated maint news')
-                else:
-                    log.debug('cached maint up to date')
-            except Exception as ex:
-                log.error(f'error during headless maint update: {ex}')
-                raise ex
+            curr_news = update_news[0]
+            if 'curr maint' not in data['maint'] or data['maint']['curr maint'] != curr_news.title:
+                log.info('cached maint news out of date, fetching and parsing online news headlessly...')
+                __maint_update(curr_news)
+                log.info('headlessly updated maint news')
+            else:
+                log.debug('cached maint up to date')
 
         await asyncio.sleep(MAINT_UPDATE_LOOP_TIMER)
 
