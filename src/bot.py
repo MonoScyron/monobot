@@ -491,18 +491,18 @@ async def react_role_message(ctx: commands.Context, *, msg=''):
 
     data_rr = data['react roles']
 
-    try:
-        await ctx.fetch_message(int(data_rr[guild_id]['message']['id']))
-        rr_msg_exists = True
-    except discord.NotFound:
+    if guild_id in data_rr and 'message' in data_rr[guild_id]:
+        try:
+            await ctx.fetch_message(int(data_rr[guild_id]['message']['id']))
+            rr_msg_exists = True
+        except discord.NotFound:
+            rr_msg_exists = False
+    else:
         rr_msg_exists = False
 
     if not msg:
-        if guild_id in data_rr and 'message' in data_rr[guild_id]:
-            if rr_msg_exists:
-                await ctx.reply(data_rr[guild_id]['message']['link'], mention_author=False)
-            else:
-                await ctx.reply('no react roles are set up in this server!', mention_author=False)
+        if rr_msg_exists:
+            await ctx.reply(data_rr[guild_id]['message']['link'], mention_author=False)
         else:
             await ctx.reply('no react roles are set up in this server!', mention_author=False)
         return
@@ -513,7 +513,7 @@ async def react_role_message(ctx: commands.Context, *, msg=''):
         await ctx.reply(f"you don't have permission to manage react roles", mention_author=False)
         return
 
-    if rr_msg_exists and msg == 'here' and 'message' in data_rr[guild_id]:
+    if rr_msg_exists and msg == 'here':
         await ctx.reply(f'this server already has a react role message, delete it to send another one: '
                         f'{data_rr[guild_id]["message"]["link"]}', mention_author=False)
         return
