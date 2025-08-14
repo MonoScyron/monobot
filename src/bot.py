@@ -419,9 +419,13 @@ async def react_role(ctx: commands.Context, *, msg=''):
 
     guild_id = str(ctx.guild.id)
     data_rr = data['react roles']
-    if guild_id in data_rr or 'message' in data_rr[guild_id]:
+    if guild_id in data_rr and 'message' in data_rr[guild_id]:
         try:
-            rr_msg = await ctx.fetch_message(int(data_rr[guild_id]['message']['id']))
+            guild_rr = data_rr[guild_id]
+            channel = ctx.guild.get_channel(int(guild_rr['message']['channel']))
+            if not channel:
+                channel = await ctx.guild.fetch_channel(int(guild_rr['message']['channel']))
+            rr_msg = await channel.fetch_message(int(guild_rr['message']['id']))
         except discord.NotFound:
             await ctx.reply(f'react role message not sent, use `{COMMAND_PREFIX}react_role_message here` in a '
                             f'channel to send', mention_author=False)
@@ -493,7 +497,11 @@ async def react_role_message(ctx: commands.Context, *, msg=''):
 
     if guild_id in data_rr and 'message' in data_rr[guild_id]:
         try:
-            await ctx.fetch_message(int(data_rr[guild_id]['message']['id']))
+            guild_rr = data_rr[guild_id]
+            channel = ctx.guild.get_channel(int(guild_rr['message']['channel']))
+            if not channel:
+                channel = await ctx.guild.fetch_channel(int(guild_rr['message']['channel']))
+            await channel.fetch_message(int(guild_rr['message']['id']))
             rr_msg_exists = True
         except discord.NotFound:
             rr_msg_exists = False
