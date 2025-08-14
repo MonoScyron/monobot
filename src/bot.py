@@ -518,11 +518,13 @@ async def react_role_message(ctx: commands.Context, *, msg=''):
                         f'{data_rr[guild_id]["message"]["link"]}', mention_author=False)
         return
 
-    data_rr_guild = data['react roles'][guild_id]
     if guild_id not in data['react roles']:
-        data_rr_guild = {
+        data['react roles'][guild_id] = {
+            'message': {},
             'roles': {}
         }
+    else:
+        data_rr_guild = data['react roles'][guild_id]
 
     msg = await ctx.send(__create_rr_msg(data_rr_guild['roles']))
     log.info(f'new rr message created: {msg.jump_url} in {msg.channel.name} ({msg.channel.id})')
