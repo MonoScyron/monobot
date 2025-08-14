@@ -79,6 +79,18 @@ data = {
     },
     'timezones': {
         # user id: timezone str
+    },
+    'react roles': {
+        # server id:
+        #   message:
+        #     id: int message id of react role msg
+        #     channel: int channel id of react role msg
+        #     link: str link to react role msg
+        #   roles: dict of roles in order on rr msg
+        #     emote id:
+        #       role id: role id int
+        #       emote name: str or '' if emote is non-custom
+        #       caption: caption str
     }
 }
 
