@@ -256,6 +256,98 @@ async def on_message_edit(before: discord.Message, message: discord.Message):
             log.error(f'error deleting on edit in touchsonar: {e}')
 
 
+async def __get_member_and_role(guild_id: int, member_id: int, role_id: int):
+    guild = bot.get_guild(guild_id)
+    if not guild:
+        guild = await bot.fetch_guild(guild_id)
+
+    member = guild.get_member(member_id)
+    if not member:
+        member = await guild.fetch_member(member_id)
+
+    role = guild.get_role(role_id)
+    if not role:
+        role = await guild.fetch_role(role_id)
+
+    return member, role
+
+
+@bot.event
+async def on_raw_reaction_add(e: discord.RawReactionActionEvent):
+    react_roles = data['react roles']
+    if str(e.guild_id) not in react_roles or 'message' not in react_roles[str(e.guild_id)]:
+        return
+
+    guild_rr = react_roles[str(e.guild_id)]
+    if e.message_id == guild_rr['message']['id']:
+        member, role = await __get_member_and_role(e.guild_id,
+                                                   e.user_id,
+                                                   int(guild_rr['roles'][str(e.emoji.id)]['role id']))
+        await member.add_roles(role, atomic=True)
+
+
+@bot.event
+async def on_raw_reaction_remove(e: discord.RawReactionActionEvent):
+    react_roles = data['react roles']
+    if str(e.guild_id) not in react_roles or 'message' not in react_roles[str(e.guild_id)]:
+        return
+
+    guild_rr = react_roles[str(e.guild_id)]
+    if e.message_id == guild_rr['message']['id']:
+        member, role = await __get_member_and_role(e.guild_id,
+                                                   e.user_id,
+                                                   int(guild_rr['roles'][str(e.emoji.id)]['role id']))
+        await member.remove_roles(role, atomic=True)
+
+
+def __create_rr_msg(role_dict: dict):
+    rr_msg = f'## React to this message for roles\n'
+    if len(role_dict) == 0:
+        rr_msg += (f'-# this server currently has no react roles, use `{COMMAND_PREFIX}react_role` to create roles, '
+                   f'or `{COMMAND_PREFIX}help react_role` for help!')
+    else:
+        for emote_id, val in role_dict.items():
+            role_emote = f'<:{val["emote name"]}:{emote_id}>' \
+                if val["emote name"] else f'{val["emote name"]}'
+            caption_txt = f'- {val["caption"]}' if val["caption"] else ''
+            rr_msg += f'{role_emote} - <@&{val["role id"]}> {caption_txt}\n'
+
+    return rr_msg
+
+
+@bot.event
+async def on_guild_role_delete(role: discord.Role):
+    guild = role.guild
+    guild_id = str(guild.id)
+
+    if guild_id in data['react roles'] and 'message' in data['react roles'][guild_id]:
+        guild_rr = data['react roles'][guild_id]
+        rr_dict = guild_rr['roles']
+
+        try:
+            channel = guild.get_channel(guild_rr['message']['channel'])
+            if not channel:
+                channel = await guild.fetch_channel(guild_rr['message']['channel'])
+            rr_msg = await channel.fetch_message(guild_rr['message']['id'])
+        except discord.NotFound:
+            log.debug('role deleted, but no rr msg')
+            return
+
+        for emote_id, vals in rr_dict.items():
+            if vals['role id'] == role.id:
+                del rr_dict[emote_id]
+                reaction_emote = guild.get_emoji(int(emote_id)) if vals['emote name'] else emote_id
+                await rr_msg.clear_reaction(reaction_emote)
+
+                log.info(f'rr deleted - emote_id: {emote_id}, role_id: {vals["role id"]}')
+                break
+
+        await rr_msg.edit(content=__create_rr_msg(rr_dict))
+
+        with open('data.json', 'w') as file:
+            json.dump(data, file)
+
+
 ROLL_HELP = """
 syntax key: [these are required] (these are optional)
 \t**fitd mode**: ~[num dice]d(num sides)(! for unsorted rolls) #(message)
@@ -303,6 +395,134 @@ async def help(ctx: discord.ext.commands.Context):
         await ctx.reply(help_msg, mention_author=False)
     else:
         await ctx.reply(f'command "{cmd_name}" not found', mention_author=False)
+
+
+@bot.command(aliases=['rr'],
+             usage=['react_role # EMOTE', 'react_role # EMOTE # CAPTION'],
+             help='create a new react role that all members can add to themselves (requires manage roles permission)')
+async def react_role(ctx: commands.Context, *, msg=''):
+    if not ctx.author.guild_permissions.manage_roles:
+        await ctx.reply(f"you don't have permission to manage react roles", mention_author=False)
+        return
+
+    guild_id = str(ctx.guild.id)
+    data_rr = data['react roles']
+    if guild_id in data_rr or 'message' in data_rr[guild_id]:
+        try:
+            rr_msg = await ctx.fetch_message(int(data_rr[guild_id]['message']['id']))
+        except discord.NotFound:
+            await ctx.reply(f'react role message not sent, use `{COMMAND_PREFIX}react_role_message here` in a '
+                            f'channel to send', mention_author=False)
+            return
+    else:
+        await ctx.reply(f'react role message not sent, use `{COMMAND_PREFIX}react_role_message here` in a '
+                        f'channel to send',
+                        mention_author=False)
+        return
+
+    split = msg.split('#')
+    if len(split) < 2 or len(split) > 3 and re.match(r'.+#.+[#.+]?', msg):
+        await ctx.reply('syntax: role name #role emote #optional caption', mention_author=False)
+        return
+
+    role_emote = split[1].strip()
+    if ':' in role_emote:
+        emote = role_emote.split(':')
+        emote_name = emote[1]
+        emote_id = emote[2][:-1]
+        reaction_emote = ctx.guild.get_emoji(int(emote_id))
+    else:
+        emote_id = role_emote
+        reaction_emote = role_emote
+        emote_name = ''
+
+    role_name = split[0].strip()
+    role_caption = split[2].strip() if len(split) > 2 else ''
+
+    if len(role_caption) > 200:
+        await ctx.reply('caption too long, must be less than 200 characters', mention_author=False)
+        return
+
+    role_dict = data_rr[guild_id]['roles']
+    if emote_id in role_dict:
+        await ctx.reply('this emote is already being used by another react role!', mention_author=False)
+        return
+
+    try:
+        role = await ctx.guild.create_role(reason='react role creation', name=role_name, mentionable=True)
+    except discord.Forbidden:
+        log.error('missing permission to create react role')
+        await ctx.send(f"bot doesn't have permission to create roles!")
+        return
+
+    role_dict[emote_id] = {
+        'role id': role.id,
+        'emote name': emote_name,
+        'caption': role_caption
+    }
+    with open('data.json', 'w') as file:
+        json.dump(data, file)
+
+    await rr_msg.edit(content=__create_rr_msg(role_dict))
+    await rr_msg.add_reaction(reaction_emote)
+    await ctx.reply(f'role <@&{role.id}> created', mention_author=False)
+    log.info(f'role created - emote_id: {emote_id}, role_id: {role.id}, role_name: {role_name}')
+
+
+# todo: add help and usage
+@bot.command(aliases=['rrmsg'],
+             usage=['react_role_message', 'react_role_message here'],
+             help='links to the message where you can get your roles via reacting, or sends a new react role message '
+                  '(sending requires manage roles permission)')
+async def react_role_message(ctx: commands.Context, *, msg=''):
+    guild_id = str(ctx.guild.id)
+
+    data_rr = data['react roles']
+
+    try:
+        await ctx.fetch_message(int(data_rr[guild_id]['message']['id']))
+        rr_msg_exists = True
+    except discord.NotFound:
+        rr_msg_exists = False
+
+    if not msg:
+        if guild_id in data_rr and 'message' in data_rr[guild_id]:
+            if rr_msg_exists:
+                await ctx.reply(data_rr[guild_id]['message']['link'], mention_author=False)
+            else:
+                await ctx.reply('no react roles are set up in this server!', mention_author=False)
+        else:
+            await ctx.reply('no react roles are set up in this server!', mention_author=False)
+        return
+    elif msg != 'here':
+        return
+
+    if not ctx.author.guild_permissions.manage_roles:
+        await ctx.reply(f"you don't have permission to manage react roles", mention_author=False)
+        return
+
+    if rr_msg_exists and msg == 'here' and 'message' in data_rr[guild_id]:
+        await ctx.reply(f'this server already has a react role message, delete it to send another one: '
+                        f'{data_rr[guild_id]["message"]["link"]}', mention_author=False)
+        return
+
+    data_rr_guild = data['react roles'][guild_id]
+    if guild_id not in data['react roles']:
+        data_rr_guild = {
+            'roles': {}
+        }
+
+    msg = await ctx.send(__create_rr_msg(data_rr_guild['roles']))
+    log.info(f'new rr message created: {msg.jump_url} in {msg.channel.name} ({msg.channel.id})')
+
+    data_rr_guild['message'] = {
+        'id': msg.id,
+        'channel': msg.channel.id,
+        'link': msg.jump_url
+    }
+
+    with open('data.json', 'w') as file:
+        json.dump(data, file)
 
 
 def __get_user_curr_time(user_id: int) -> datetime:
@@ -551,7 +771,7 @@ async def maint(ctx: discord.ext.commands.Context):
         await ctx.reply(f'the last maintenance ended <t:{to_timestamp}:R> at <t:{to_timestamp}>', mention_author=False)
 
 
-@bot.command(help='forces all messages to start with f (admins only)')
+@bot.command(help='forces all messages to start with f (requires admin)')
 async def touchsonar(ctx: discord.ext.commands.Context, *, msg=''):
     if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == OWNER_ID:
         await ctx.reply(f'turning on touch sonar can only be done by admins & mono', mention_author=False)
@@ -617,7 +837,7 @@ async def __remove_local_roll_mode(ctx: discord.ext.commands.Context):
         await ctx.reply("local rolling mode doesn't exist!", mention_author=False)
 
 
-@bot.command(help='set rolling mode of the server/category (channel managers only)',
+@bot.command(help='set rolling mode of the server/category (requires channel manager permission)',
              usage=['mode MODE', 'mode local MODE'])
 async def mode(ctx: discord.ext.commands.Context, *, msg=''):
     split = ctx.message.content.split(' ')
