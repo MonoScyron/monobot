@@ -294,7 +294,8 @@ async def on_raw_reaction_add(e: discord.RawReactionActionEvent):
     if e.message_id == guild_rr['message']['id']:
         member, role = await __get_member_and_role(e.guild_id,
                                                    e.user_id,
-                                                   int(guild_rr['roles'][str(e.emoji.id)]['role id']))
+                                                   int(guild_rr['roles']
+                                                       [str(e.emoji.id) if e.emoji.id else e.emoji.name]['role id']))
         await member.add_roles(role, atomic=True)
 
 
@@ -308,7 +309,8 @@ async def on_raw_reaction_remove(e: discord.RawReactionActionEvent):
     if e.message_id == guild_rr['message']['id']:
         member, role = await __get_member_and_role(e.guild_id,
                                                    e.user_id,
-                                                   int(guild_rr['roles'][str(e.emoji.id)]['role id']))
+                                                   int(guild_rr['roles']
+                                                       [str(e.emoji.id) if e.emoji.id else e.emoji.name]['role id']))
         await member.remove_roles(role, atomic=True)
 
 
@@ -319,8 +321,7 @@ def __create_rr_msg(role_dict: dict):
                    f'or `{COMMAND_PREFIX}help react_role` for help!')
     else:
         for emote_id, val in role_dict.items():
-            role_emote = f'<:{val["emote name"]}:{emote_id}>' \
-                if val["emote name"] else f'{val["emote name"]}'
+            role_emote = f'<:{val["emote name"]}:{emote_id}>' if val["emote name"] else f'{emote_id}'
             caption_txt = f'- {val["caption"]}' if val["caption"] else ''
             rr_msg += f'{role_emote} - <@&{val["role id"]}> {caption_txt}\n'
 
