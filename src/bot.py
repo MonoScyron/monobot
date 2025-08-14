@@ -413,8 +413,8 @@ async def help(ctx: discord.ext.commands.Context):
              usage=['react_role # EMOTE', 'react_role # EMOTE # CAPTION'],
              help='create a new react role that all members can add to themselves (requires manage roles permission)')
 async def react_role(ctx: commands.Context, *, msg=''):
-    if not ctx.author.guild_permissions.manage_roles:
-        await ctx.reply(f"you don't have permission to manage react roles", mention_author=False)
+    if not ctx.author.guild_permissions.manage_roles and not f'{ctx.author.id}' == OWNER_ID:
+        await ctx.reply(f"making new react roles can only be done by role managers & mono", mention_author=False)
         return
 
     guild_id = str(ctx.guild.id)
@@ -509,8 +509,8 @@ async def react_role_message(ctx: commands.Context, *, msg=''):
     elif msg != 'here':
         return
 
-    if not ctx.author.guild_permissions.manage_roles:
-        await ctx.reply(f"you don't have permission to manage react roles", mention_author=False)
+    if not ctx.author.guild_permissions.manage_roles and not f'{ctx.author.id}' == OWNER_ID:
+        await ctx.reply(f"managing react role messages can only be done by role managers & mono", mention_author=False)
         return
 
     if rr_msg_exists and msg == 'here':
