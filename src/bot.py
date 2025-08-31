@@ -1480,7 +1480,7 @@ async def lethal(ctx: Context, *, msg=''):
              usage=[
                  'skill TARGET',
                  'skill TARGET MODIFYING_EQUATION',
-                 'skill NUM_DICE**d**NUM_SIDES'
+                 'skill NUM_DICE**d**NUM_SIDES',
                  'skill NUM_DICE**d**NUM_SIDES MODIFYING_EQUATION',
              ],
              help='roll a skill check, can append ! after all numbers for unsorted dice, and/or #MSG at the very end to attach a message to the roll (only usable with Delta Green)')
