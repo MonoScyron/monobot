@@ -21,6 +21,7 @@ from dateutil import parser, tz
 from PIL import Image
 from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown, Context
+from simpleeval import simple_eval, InvalidExpression
 
 PFP_SIZE = (200, 200)
 MAINT_UPDATE_LOOP_TIMER = 5 * 60  # update every 5 mins
