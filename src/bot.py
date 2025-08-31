@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 from dateutil import parser, tz
 from PIL import Image
 from discord.ext import commands
-from discord.ext.commands import CommandOnCooldown
+from discord.ext.commands import CommandOnCooldown, Context
 
 PFP_SIZE = (200, 200)
 MAINT_UPDATE_LOOP_TIMER = 5 * 60  # update every 5 mins
@@ -361,23 +361,24 @@ async def on_guild_role_delete(role: discord.Role):
             json.dump(data, file)
 
 
-ROLL_HELP = """
+ROLL_HELP = f"""
 syntax key: [these are required] (these are optional)
-\t**fitd mode**: ~[num dice]d(num sides)(! for unsorted rolls) #(message)
-\t\texample: ~4d! #this will roll 4 d6s unsorted
-\t**wildseas mode**: ~[num dice]d(num sides)(! for unsorted rolls) -(num dice to cut) #(message)
-\t\texample: ~3d! -1 #this will roll 3 d6s unsorted with a cut of 1
-\t**cain mode**: ~[num dice]d(num sides)(! for unsorted rolls) (h for hard)(r for risky) #(message)
-\t\texample: ~5d hr #this will roll 5 d6s with hard and risky results
-\t**hunter mode**: ~[num dice]d(num sides)(! for unsorted rolls) (d[num desperation dice]) #(message)
-\t\texample: ~3d d2 #this will roll 3 d10s with 2 d10 desperation dice
-\t**persona mode**: ~[num dice]d(num sides)(! for unsorted rolls) #(message)
-\t\texample: ~4d #this will roll 4 d6s
+\t**fitd mode**: {COMMAND_PREFIX}[num dice]d(num sides)(! for unsorted rolls) #(message)
+\t\texample: {COMMAND_PREFIX}4d! #this will roll 4 d6s unsorted
+\t**wildseas mode**: {COMMAND_PREFIX}[num dice]d(num sides)(! for unsorted rolls) -(num dice to cut) #(message)
+\t\texample: {COMMAND_PREFIX}3d! -1 #this will roll 3 d6s unsorted with a cut of 1
+\t**cain mode**: {COMMAND_PREFIX}[num dice]d(num sides)(! for unsorted rolls) (h for hard)(r for risky) #(message)
+\t\texample: {COMMAND_PREFIX}5d hr #this will roll 5 d6s with hard and risky results
+\t**hunter mode**: {COMMAND_PREFIX}[num dice]d(num sides)(! for unsorted rolls) (d[num desperation dice]) #(message)
+\t\texample: {COMMAND_PREFIX}3d d2 #this will roll 3 d10s with 2 d10 desperation dice
+\t**persona mode**: {COMMAND_PREFIX}[num dice]d(num sides)(! for unsorted rolls) #(message)
+\t\texample: {COMMAND_PREFIX}4d #this will roll 4 d6s
+\t**delta green mode**: use `{COMMAND_PREFIX}help skill` or `{COMMAND_PREFIX}help lethal`
 """
 
 
 @bot.command(help='sends this message', usage=['help', 'help CMD'])
-async def help(ctx: discord.ext.commands.Context):
+async def help(ctx: Context):
     cmd = ctx.message.content.split()
     if len(cmd) <= 1:
         help_message = ''
@@ -748,7 +749,7 @@ async def __headless_maint_update():
 
 
 @bot.command(help='get time of Limbus maintenance')
-async def maint(ctx: discord.ext.commands.Context):
+async def maint(ctx: Context):
     if random.random() < 0.02:
         await ctx.reply('wouldnt you like to know, pisserboy?', mention_author=False)
         return
@@ -794,7 +795,7 @@ async def maint(ctx: discord.ext.commands.Context):
 
 
 @bot.command(help='forces all messages to start with f (requires admin)')
-async def touchsonar(ctx: discord.ext.commands.Context, *, msg=''):
+async def touchsonar(ctx: Context, *, msg=''):
     if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == OWNER_ID:
         await ctx.reply(f'turning on touch sonar can only be done by admins & mono', mention_author=False)
         return
@@ -815,7 +816,7 @@ async def touchsonar(ctx: discord.ext.commands.Context, *, msg=''):
 
 
 @bot.command(help='chooses from list of comma-separated choices', usage=['choose CHOICE, CHOICE, CHOICE, ...'])
-async def choose(ctx: discord.ext.commands.Context, *, msg=''):
+async def choose(ctx: Context, *, msg=''):
     split = [x.strip() for x in ctx.message.content[7:].split(',')]
     if len(split) == 0:
         await ctx.reply("you'll need to give me a list of comma-separated choices for me to choose from",
@@ -831,6 +832,7 @@ class RollModeEnum(Enum):
     CAIN = "cain"
     HUNTER = "hunter"
     PERSONA = "persona"
+    DG = "deltagreen"
 
 
 modes = {e.value for e in RollModeEnum}
@@ -851,7 +853,7 @@ async def __default_mode(message: discord.Message):
     await message.channel.send(f'server currently has no rolling mode, setting to "fitd" by default')
 
 
-async def __remove_local_roll_mode(ctx: discord.ext.commands.Context):
+async def __remove_local_roll_mode(ctx: Context):
     try:
         del data['roll mode'][f'{ctx.guild.id}']['category'][f'{ctx.channel.category.id}']
         await ctx.send('removing local rolling mode...')
@@ -861,7 +863,7 @@ async def __remove_local_roll_mode(ctx: discord.ext.commands.Context):
 
 @bot.command(help='set rolling mode of the server/category (requires channel manager permission)',
              usage=['mode MODE', 'mode local MODE'])
-async def mode(ctx: discord.ext.commands.Context, *, msg=''):
+async def mode(ctx: Context, *, msg=''):
     split = ctx.message.content.split(' ')
     if len(split) == 1:
         if f'{ctx.guild.id}' in data['roll mode']:
@@ -908,12 +910,12 @@ async def mode(ctx: discord.ext.commands.Context, *, msg=''):
 
 
 @bot.command(help='good advice')
-async def touchgrass(ctx: discord.ext.commands.Context, *, msg=''):
+async def touchgrass(ctx: Context, *, msg=''):
     await ctx.reply('https://hard-drive.net/hd/video-games/top-10-grasses-to-go-touch/', mention_author=False)
 
 
 @bot.command(help='uwu someone by replying to them or uwu your own message', usage=['uwu', 'uwu MSG'])
-async def uwu(ctx: discord.ext.commands.Context, *, msg=''):
+async def uwu(ctx: Context, *, msg=''):
     if ctx.message.reference:
         raw_msg = await ctx.fetch_message(ctx.message.reference.message_id)
         uwu_msg = uwu_factory.uwuify(raw_msg.content)
@@ -948,7 +950,7 @@ num_to_word = {
 @bot.command(aliases=['p'],
              help='sets up a poll, add options by passing a list of comma-separated choices (limit of 9)',
              usage=['poll CHOICE, CHOICE, CHOICE, ...'])
-async def poll(ctx: discord.ext.commands.Context, *, msg=''):
+async def poll(ctx: Context, *, msg=''):
     options = [s.strip() for s in msg.strip().split(',') if len(s) > 0]
     if len(options) > 9:
         await ctx.reply('do you really need that many options in a poll?', mention_author=False)
@@ -973,13 +975,13 @@ async def poll(ctx: discord.ext.commands.Context, *, msg=''):
 
 
 @bot.command(aliases=['qp'], help='sets up a yes/no poll')
-async def quickpoll(ctx: discord.ext.commands.Context, *, msg=''):
+async def quickpoll(ctx: Context, *, msg=''):
     await ctx.message.add_reaction("✅")
     await ctx.message.add_reaction("❌")
 
 
 @bot.command(help='reply/mention someone to make them a wee bit yellow', usage=['pee', 'pee @USER'])
-async def pee(ctx: discord.ext.commands.Context, *, msg=''):
+async def pee(ctx: Context, *, msg=''):
     def make_pee():
         pee_mask = Image.new('RGBA', PFP_SIZE, (255, 255, 0, 100))
         pfp.paste(pee_mask, (0, 0), pee_mask)
@@ -1005,12 +1007,12 @@ async def pee(ctx: discord.ext.commands.Context, *, msg=''):
 
 @bot.command(help='mention mono')
 @commands.cooldown(5, 300)
-async def a(ctx: discord.ext.commands.Context, *, msg=''):
+async def a(ctx: Context, *, msg=''):
     await ctx.reply(f'<@{OWNER_ID}>', mention_author=False)
 
 
 @bot.command(help='give yourself a gun, as a treat')
-async def gun(ctx: discord.ext.commands.Context, *, msg=''):
+async def gun(ctx: Context, *, msg=''):
     author_pfp = await ctx.author.display_avatar.with_static_format('png').read()
     gun_image = Image.open('./img/gun.png').resize((150, 150))
     pfp = Image.open(io.BytesIO(author_pfp)).resize(PFP_SIZE)
@@ -1023,7 +1025,7 @@ async def gun(ctx: discord.ext.commands.Context, *, msg=''):
 
 
 @bot.command(help='show the bot a bit of love (some exceptions apply)')
-async def love(ctx: discord.ext.commands.Context, *, msg=''):
+async def love(ctx: Context, *, msg=''):
     if ctx.message.author.id == int(EXPLODE_ID):
         if random.random() < 0.05:
             love_list = ['💕', '💝', '💖']
@@ -1049,7 +1051,7 @@ async def love(ctx: discord.ext.commands.Context, *, msg=''):
 
 @bot.command(help='reply/mention someone to blow them up, or send some nyukes',
              usage=['explode', 'explode @USER', 'explode NUM'])
-async def explode(ctx: discord.ext.commands.Context, *, msg=""):
+async def explode(ctx: Context, *, msg=""):
     def make_explode(boom_pfp):
         frames = []
         for frame_name in range(17):
@@ -1141,7 +1143,7 @@ def __roll_hate(fstr, fval, pool, roll_mode):
     return fstr
 
 
-def __hate_wildseas(ctx: discord.ext.commands.Context, pool, fval):
+def __hate_wildseas(ctx: Context, pool, fval):
     twist = __has_duplicates(pool)
     if not twist:
         fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{wildsea_dict[fval]}**.'
@@ -1150,7 +1152,7 @@ def __hate_wildseas(ctx: discord.ext.commands.Context, pool, fval):
     return __roll_hate(fstr, fval, pool, RollModeEnum.WILDSEAS.value)
 
 
-def __hate_fitd(ctx: discord.ext.commands.Context, pool, fval):
+def __hate_fitd(ctx: Context, pool, fval):
     crit = pool.count(6) >= 2
     if not crit:
         fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{fitd_dict[fval]}**.'
@@ -1159,7 +1161,7 @@ def __hate_fitd(ctx: discord.ext.commands.Context, pool, fval):
     return __roll_hate(fstr, fval, pool, RollModeEnum.FITD.value)
 
 
-def __hate_cain(ctx: discord.ext.commands.Context, pool, fval):
+def __hate_cain(ctx: Context, pool, fval):
     num_success = len([x for x in pool if x > 3])
     if num_success <= 1:
         fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{cain_dict[fval]}**.'
@@ -1169,7 +1171,7 @@ def __hate_cain(ctx: discord.ext.commands.Context, pool, fval):
 
 
 @bot.command(help='let the bot vent some rage, may or may not improve your rolls')
-async def hate(ctx: discord.ext.commands.Context, *, msg=""):
+async def hate(ctx: Context, *, msg=""):
     pool = [random.choices(range(1, 7), weights=weights)[0] for _ in range(10)]
     pool = sorted(pool, reverse=True)
     fval = max(pool)
@@ -1194,7 +1196,7 @@ def __roll_risk_msg():
 
 
 @bot.command(aliases=['r'], help='roll risk (only usable with Cain)')
-async def risk(ctx: discord.ext.commands.Context, *, msg=""):
+async def risk(ctx: Context, *, msg=""):
     if __get_curr_roll_mode(ctx.message) == RollModeEnum.CAIN.value:
         await ctx.reply(__roll_risk_msg(), mention_author=False)
     else:
@@ -1426,7 +1428,7 @@ def __roll_custom(original_msg: discord.Message, message: str, dice: int, sort_d
         fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides}'
         fstr += f'{f"; roll for `{message}`" if message else ""}.'
 
-        fstr += f' [`{dice}d`: **{fval}**; '
+        fstr += f' [`{dice}d{sides}`: **{fval}**; '
         for x in (sorted(pool, reverse=True) if sort_dice else pool):
             fstr += f'`{x}`, '
     else:
@@ -1434,7 +1436,7 @@ def __roll_custom(original_msg: discord.Message, message: str, dice: int, sort_d
         fval = min(pool)
         fstr = f'{original_msg.author.mention}, you rolled {dice}d{sides}'
         fstr += f'{f"; roll for `{message}`" if message else ""}.'
-        fstr += f' [`{dice}d`: **{fval}**; `{sorted(pool)[0]}`, '
+        fstr += f' [`{dice}d{sides}`: **{fval}**; `{sorted(pool)[0]}`, '
         for x in sorted(pool)[1:]:
             fstr += f'~~`{x}`~~, '
 
@@ -1444,11 +1446,101 @@ def __roll_custom(original_msg: discord.Message, message: str, dice: int, sort_d
     return fstr
 
 
+@bot.command(usage=['lethal TARGET', 'lethal TARGET MODIFYING_EQUATION'],
+             help="roll to see if an action is lethal, or how much damage it'll do (only usable with Delta Green)")
+async def lethal(ctx: Context, *, msg=''):
+    if __get_curr_roll_mode(ctx.message) != RollModeEnum.DG.value:
+        await ctx.reply('only available for "deltagreen" roll mode', mention_author=False)
+        return
+
+    split = msg.strip().split('#')
+    message = ''.join(split[1:]) if len(split) > 1 else ''
+
+    try:
+        target = simple_eval(split[0])
+    except Exception:
+        await ctx.reply('incorrect syntax!', mention_author=False)
+        return
+
+    d1 = random.randint(1, 9)
+    d2 = random.randint(1, 9)
+    dmg = d1 + d2
+    fval = int(f'{d1}{d2}')
+
+    fstr = f'{ctx.author.mention}, your target was `{target}` and you rolled **{fval}** for '
+    if fval > target:
+        fstr += f'__**DEATH**__'
+    else:
+        fstr += f'**{dmg}** damage'
+    fstr += f'{f"; roll for `{message}`" if message else ""}.'
+    await ctx.reply(fstr, mention_author=False)
+
+
+@bot.command(aliases=['sk'],
+             usage=[
+                 'skill TARGET',
+                 'skill TARGET MODIFYING_EQUATION',
+                 'skill NUM_DICE**d**NUM_SIDES'
+                 'skill NUM_DICE**d**NUM_SIDES MODIFYING_EQUATION',
+             ],
+             help='roll a skill check, can append ! after all numbers for unsorted dice, and/or #MSG at the very end to attach a message to the roll (only usable with Delta Green)')
+async def skill(ctx: Context, *, msg=''):
+    if __get_curr_roll_mode(ctx.message) != RollModeEnum.DG.value:
+        await ctx.reply('only available for "deltagreen" roll mode', mention_author=False)
+        return
+
+    split = msg.strip().split('#')
+    message = ''.join(split[1:]) if len(split) > 1 else ''
+    if match := re.match(fr'(\d+)[dD](\d+)([\s\d|\+\-\*\/]*)(!?)($| ?#.*)', msg):
+        dice = int(match.group(1).strip())
+        sides = int(match.group(2).strip())
+        try:
+            modifier = simple_eval(match.group(3).strip())
+        except InvalidExpression:
+            modifier = 0
+        sort_dice = '!' not in match.group(4)
+
+        fstr = (f'{ctx.author.mention}, you rolled {dice}d{sides}'
+                f'{f"; roll for `{message}`" if message else ""}.')
+
+        pool = [random.randint(1, sides) for _ in range(dice)]
+        fval = sum(pool)
+        equation = f'{fval}{match.group(3).strip()} = ' if modifier else ''
+
+        fstr += f' [`{dice}d{sides}`: {equation}**{fval + modifier}**; '
+        for x in (sorted(pool, reverse=True) if sort_dice else pool):
+            fstr += f'`{x}`, '
+        fstr = fstr[:-2] + "]"
+        await ctx.reply(fstr, mention_author=False)
+        return
+
+    try:
+        target = simple_eval(split[0])
+    except Exception:
+        await ctx.reply('incorrect syntax!', mention_author=False)
+        return
+
+    d1 = random.randint(1, 9)
+    d2 = random.randint(1, 9)
+    fval = int(f'{d1}{d2}')
+    crit = d1 == d2 or fval == 1
+
+    fstr = f'{ctx.author.mention}, your target was `{target}` and you rolled **{fval}** for '
+    if fval > target:
+        fstr += f'a **{"Failure" if not crit else "Fumble"}**'
+    else:
+        fstr += f'a **{"Success" if not crit else "Critical Success"}**'
+
+    fstr += f'{f"; roll for `{message}`" if message else ""}.'
+    await ctx.reply(fstr, mention_author=False)
+
+
 async def roll_dice(message: discord.Message) -> bool:
     """Return true if roll pattern matched/do not continue"""
     try:
         roll_mode = __get_curr_roll_mode(message)
-        if ((match := re.match(r'~(\d+)[dD](\d*)(!?)( ?-\d*)?( h| r| hr| rh)?($| ?#.*)', message.content)) and
+        if ((match := re.match(fr'{COMMAND_PREFIX}(\d+)[dD](\d*)(!?)( ?-\d*)?( h| r| hr| rh)?($| ?#.*)',
+                               message.content)) and
                 roll_mode == RollModeEnum.CAIN.value):
             dice = int(match.group(1).strip())
             sides = int(match.group(2).strip()) if len(match.group(2)) > 0 else 6
@@ -1461,7 +1553,7 @@ async def roll_dice(message: discord.Message) -> bool:
             await message.reply(__roll_cain(message, msg, dice, 'r' in difficulty, 'h' in difficulty,
                                             sort_dice, sides), mention_author=False)
             return True
-        elif ((match := re.match(r'~(\d+)[dD](\d*)(!?)(\s?[dD]([0-9]))?($| ?#.*)', message.content)) and
+        elif ((match := re.match(fr'{COMMAND_PREFIX}(\d+)[dD](\d*)(!?)(\s?[dD]([0-9]))?($| ?#.*)', message.content)) and
               roll_mode == RollModeEnum.HUNTER.value):
             dice = int(match.group(1).strip())
             sides = int(match.group(2).strip()) if len(match.group(2)) > 0 else 10
@@ -1473,7 +1565,7 @@ async def roll_dice(message: discord.Message) -> bool:
                 return True
             await message.reply(__roll_hunter(message, msg, dice, desp_dice, sort_dice, sides), mention_author=False)
             return True
-        elif ((match := re.match(r'~(-?)(\d+)[dD](\d*)(!?)( ?-\d*)?($| ?#.*)', message.content)) and
+        elif ((match := re.match(fr'{COMMAND_PREFIX}(-?)(\d+)[dD](\d*)(!?)( ?-\d*)?($| ?#.*)', message.content)) and
               (roll_mode == RollModeEnum.WILDSEAS.value or
                roll_mode == RollModeEnum.FITD.value or
                roll_mode == RollModeEnum.PERSONA.value)):
@@ -1506,7 +1598,7 @@ async def roll_dice(message: discord.Message) -> bool:
 
 
 @bot.command(help="sends monobot's invite link (mono only)")
-async def invite(ctx: discord.ext.commands.Context, *, msg=""):
+async def invite(ctx: Context, *, msg=""):
     if ctx.message.author.id == int(OWNER_ID):
         await ctx.reply(f'use this [invite](https://discord.com/oauth2/authorize?client_id=1208179071624941578'
                         f'&permissions=8&scope=bot) to add monobot to your server')
