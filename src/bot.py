@@ -224,7 +224,8 @@ async def on_ready():
 async def on_command_error(ctx, error):
     log.error(f'command error: {error}')
     if isinstance(error, CommandOnCooldown):
-        await ctx.send(f'<:explode:1333259731640258581>')
+        await ctx.reply(f'you must wait before using that command again <:explode:1333259731640258581>',
+                        mention_author=False)
 
 
 @bot.event
