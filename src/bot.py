@@ -1548,7 +1548,7 @@ async def roll_dice(message: discord.Message) -> bool:
     try:
         roll_mode = __get_curr_roll_mode(message)
         if (roll_mode == RollModeEnum.CAIN.value and (
-                match := re.match(fr'{COMMAND_PREFIX}(\d+)[dD](\d*)([\s\d|\+\-\*\/]*)(!?)( ?-\d*)?( h| r| hr| rh)?($| ?#.*)',
+                match := re.match(fr'{COMMAND_PREFIX}(\d+)[dD](\d*)([\s\d|\+\-\*\/]*?)(!?)( ?-\d*)?( h| r| hr| rh)?($| ?#.*)',
                                   message.content)
         )):
             dice = int(match.group(1).strip())
@@ -1564,7 +1564,7 @@ async def roll_dice(message: discord.Message) -> bool:
                                             sort_dice, sides, mods), mention_author=False)
             return True
         elif (roll_mode == RollModeEnum.HUNTER.value and (
-                match := re.match(fr'{COMMAND_PREFIX}(\d+)[dD](\d*)([\s\d|\+\-\*\/]*)(!?)(\s?[dD]([0-9]))?($| ?#.*)',
+                match := re.match(fr'{COMMAND_PREFIX}(\d+)[dD](\d*)([\s\d|\+\-\*\/]*?)(!?)(\s?[dD]([0-9]))?($| ?#.*)',
                                   message.content)
         )):
             dice = int(match.group(1).strip())
@@ -1580,7 +1580,7 @@ async def roll_dice(message: discord.Message) -> bool:
                                 mention_author=False)
             return True
         elif (roll_mode == RollModeEnum.DG.value and (
-                match := re.match(fr'{COMMAND_PREFIX}(\d+)[dD](\d*)([\s\d|\+\-\*\/]*)(!?)($| ?#.*)',
+                match := re.match(fr'{COMMAND_PREFIX}(\d+)[dD](\d*)([\s\d|\+\-\*\/]*?)(!?)($| ?#.*)',
                                   message.content)
         )):
             if not match.group(2):
@@ -1600,7 +1600,7 @@ async def roll_dice(message: discord.Message) -> bool:
         elif ((roll_mode == RollModeEnum.WILDSEAS.value or
                roll_mode == RollModeEnum.FITD.value or
                roll_mode == RollModeEnum.PERSONA.value) and (
-                      match := re.match(fr'{COMMAND_PREFIX}(-?)(\d+)[dD](\d*)([\s\d|\+\-\*\/]*)(!?)( ?-\d*)?($| ?#.*)',
+                      match := re.match(fr'{COMMAND_PREFIX}(-?)(\d+)[dD](\d*)([\s\d|\+\-\*\/]*?)(!?)( ?-\d*)?($| ?#.*)',
                                         message.content)
               )):
             dice = int(f'{match.group(1)}{match.group(2).strip()}')
@@ -1611,6 +1611,8 @@ async def roll_dice(message: discord.Message) -> bool:
 
             sort_dice = '!' not in match.group(5)
             cut = int(match.group(6).strip().replace('-', '')) if match.group(6) else 0
+            print(match.groups())
+            print(cut)
             msg = match.group(7).strip().replace('#', '')
             if dice and dice > 100:
                 await message.reply('in what world do you need to roll that many dice?', mention_author=False)
