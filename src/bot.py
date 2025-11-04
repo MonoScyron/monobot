@@ -53,7 +53,6 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.AutoShardedBot(command_prefix='', intents=intents, help_command=None)
 
-stupid_fucking_pillar = dict()
 alarms = {}
 
 # TODO: Setup sqlite for data
@@ -243,31 +242,6 @@ async def on_message(message: discord.Message):
             return
         message.content = message.content[1:]
         await bot.process_commands(message)
-
-    elif (message.guild.id in stupid_fucking_pillar and
-          stupid_fucking_pillar[message.guild.id]['status'] == GuildStatus.TOUCHSONAR and
-          message.content and
-          message.content[0] != 'f' and
-          message.content[0] != 'F'):
-        try:
-            await message.delete()
-        except Exception as e:
-            log.error(f'error deleting on message in touchsonar: {e}')
-
-
-@bot.event
-async def on_message_edit(before: discord.Message, message: discord.Message):
-    if (message.guild.id in stupid_fucking_pillar and
-            message.author.id != int(BOT_ID) and
-            stupid_fucking_pillar[message.guild.id]['status'] == GuildStatus.TOUCHSONAR and
-            message.created_at.timestamp() > stupid_fucking_pillar[message.guild.id]['start'] and
-            message.content and
-            message.content[0] != 'f' and
-            message.content[0] != 'F'):
-        try:
-            await message.delete()
-        except Exception as e:
-            log.error(f'error deleting on edit in touchsonar: {e}')
 
 
 async def __get_member_and_role(guild_id: int, member_id: int, role_id: int):
@@ -793,27 +767,6 @@ async def maint(ctx: Context):
                         mention_author=False)
     else:
         await ctx.reply(f'the last maintenance ended <t:{to_timestamp}:R> at <t:{to_timestamp}>', mention_author=False)
-
-
-@bot.command(help='forces all messages to start with f (requires admin)')
-async def touchsonar(ctx: Context, *, msg=''):
-    if not ctx.author.guild_permissions.administrator and not f'{ctx.author.id}' == OWNER_ID:
-        await ctx.reply(f'turning on touch sonar can only be done by admins & mono', mention_author=False)
-        return
-
-    global stupid_fucking_pillar
-    if (ctx.guild.id in stupid_fucking_pillar and
-            not stupid_fucking_pillar[ctx.guild.id]['status'] == GuildStatus.TOUCHSONAR):
-        await ctx.reply('another status is currently being applied to this server!', mention_author=False)
-    elif ctx.guild.id in stupid_fucking_pillar:
-        del stupid_fucking_pillar[ctx.guild.id]
-        await ctx.reply('touch based sonar now optional', mention_author=False)
-    else:
-        stupid_fucking_pillar[ctx.guild.id] = {
-            'status': GuildStatus.TOUCHSONAR,
-            'start': datetime.now().timestamp()
-        }
-        await ctx.reply('touch based sonar now enforced', mention_author=False)
 
 
 @bot.command(help='chooses from list of comma-separated choices', usage=['choose CHOICE, CHOICE, CHOICE, ...'])
