@@ -388,7 +388,7 @@ async def help(ctx: Context):
 
 
 @bot.command(aliases=['rr'],
-             usage=['react_role # EMOTE', 'react_role # EMOTE # CAPTION'],
+             usage=['react_role NAME # EMOTE', 'react_role NAME # EMOTE # CAPTION'],
              help='create a new react role that all members can add to themselves (requires manage roles permission)')
 async def react_role(ctx: commands.Context, *, msg=''):
     if not ctx.author.guild_permissions.manage_roles and not f'{ctx.author.id}' == OWNER_ID:
