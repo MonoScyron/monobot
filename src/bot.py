@@ -692,6 +692,8 @@ def __maint_update(curr_news):
     with open('data.json', 'w') as file:
         json.dump(data, file)
 
+    log.info('updating maint to: ' + str(data['maint']))
+
 
 def __get_scheduled_update_news(entries):
     return [news for news in entries if
@@ -1565,8 +1567,6 @@ async def roll_dice(message: discord.Message) -> bool:
 
             sort_dice = '!' not in match.group(5)
             cut = int(match.group(6).strip().replace('-', '')) if match.group(6) else 0
-            print(match.groups())
-            print(cut)
             msg = match.group(7).strip().replace('#', '')
             if dice and dice > 100:
                 await message.reply('in what world do you need to roll that many dice?', mention_author=False)
