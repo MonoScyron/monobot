@@ -685,10 +685,10 @@ def __maint_update(curr_news):
     from_time_str = time_strs[0].replace('[', '').replace(']', '')
     to_time_str = time_strs[1].replace('[', '').replace(']', '')
 
-    data['maint']['curr maint'] = curr_news.title
-    data['maint']['from time'] = from_time_str
-    data['maint']['to time'] = to_time_str
-    data['maint']['date'] = date_str
+    data['maint']['curr maint'] = curr_news.title.strip()
+    data['maint']['from time'] = from_time_str.strip()
+    data['maint']['to time'] = to_time_str.strip()
+    data['maint']['date'] = date_str.strip()
     with open('data.json', 'w') as file:
         json.dump(data, file)
 
