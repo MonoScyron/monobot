@@ -35,7 +35,7 @@ from src.const import PFP_SIZE, \
     LEIKA_SMILE_PATTERN, \
     ROLL_HELP, \
     MONOBOT_WEBHOOK_NAME, \
-    RollModeEnum, NUM_TO_EMOTE, HATE_WEIGHTS, HATE_LIST
+    RollModeEnum, NUM_TO_EMOTE, HATE_WEIGHTS, HATE_LIST, FITD_DICT, WILDSEA_DICT, CAIN_DICT, RISK_DICT, CAIN_DICT_HARD
 
 log = logging.getLogger('MonoBot')
 logging.basicConfig(format='%(asctime)s:%(name)s:%(levelname)s:%(funcName)s:%(message)s',
@@ -48,6 +48,7 @@ intents.message_content = True
 bot = commands.AutoShardedBot(command_prefix='', intents=intents, help_command=None)
 
 alarms = {}
+webhook_cache = {}
 
 # TODO: Setup sqlite for data
 data = {
@@ -175,22 +176,6 @@ async def on_message(message: discord.Message):
         await bot.process_commands(message)
 
 
-async def __get_member_and_role(guild_id: int, member_id: int, role_id: int):
-    guild = bot.get_guild(guild_id)
-    if not guild:
-        guild = await bot.fetch_guild(guild_id)
-
-    member = guild.get_member(member_id)
-    if not member:
-        member = await guild.fetch_member(member_id)
-
-    role = guild.get_role(role_id)
-    if not role:
-        role = await guild.fetch_role(role_id)
-
-    return member, role
-
-
 @bot.event
 async def on_raw_reaction_add(e: discord.RawReactionActionEvent):
     react_roles = data['react roles']
@@ -219,20 +204,6 @@ async def on_raw_reaction_remove(e: discord.RawReactionActionEvent):
                                                    int(guild_rr['roles']
                                                        [str(e.emoji.id) if e.emoji.id else e.emoji.name]['role id']))
         await member.remove_roles(role, atomic=True)
-
-
-def __create_rr_msg(role_dict: dict):
-    rr_msg = f'## React to this message for roles\n'
-    if len(role_dict) == 0:
-        rr_msg += (f'-# this server currently has no react roles, use `{COMMAND_PREFIX}react_role` to create roles, '
-                   f'or `{COMMAND_PREFIX}help react_role` for help!')
-    else:
-        for emote_id, val in role_dict.items():
-            role_emote = f'<:{val["emote name"]}:{emote_id}>' if val["emote name"] else f'{emote_id}'
-            caption_txt = f'- {val["caption"]}' if val["caption"] else ''
-            rr_msg += f'{role_emote} - <@&{val["role id"]}> {caption_txt}\n'
-
-    return rr_msg
 
 
 @bot.event
@@ -302,12 +273,58 @@ async def help(ctx: Context):
         await ctx.reply(f'command "{cmd_name}" not found', mention_author=False)
 
 
+async def __say_with_webhook(content: str, username: str, avatar_url: str, channel: discord.TextChannel):
+    webhook = await __get_webhook(channel)
+    await webhook.send(
+        content=content,
+        username=username,
+        avatar_url=avatar_url
+    )
+
+
 async def __get_webhook(channel: discord.TextChannel):
+    if channel.id in webhook_cache:
+        return webhook_cache[channel.id]
+
     webhooks = await channel.webhooks()
     for webhook in webhooks:
         if webhook.name == MONOBOT_WEBHOOK_NAME:
+            webhook_cache[channel.id] = webhook
             return webhook
-    return await channel.create_webhook(name=MONOBOT_WEBHOOK_NAME)
+
+    webhook = await channel.create_webhook(name=MONOBOT_WEBHOOK_NAME)
+    webhook_cache[channel.id] = webhook
+    return webhook
+
+
+async def __get_member_and_role(guild_id: int, member_id: int, role_id: int):
+    guild = bot.get_guild(guild_id)
+    if not guild:
+        guild = await bot.fetch_guild(guild_id)
+
+    member = guild.get_member(member_id)
+    if not member:
+        member = await guild.fetch_member(member_id)
+
+    role = guild.get_role(role_id)
+    if not role:
+        role = await guild.fetch_role(role_id)
+
+    return member, role
+
+
+def __create_rr_msg(role_dict: dict):
+    rr_msg = f'## React to this message for roles\n'
+    if len(role_dict) == 0:
+        rr_msg += (f'-# this server currently has no react roles, use `{COMMAND_PREFIX}react_role` to create roles, '
+                   f'or `{COMMAND_PREFIX}help react_role` for help!')
+    else:
+        for emote_id, val in role_dict.items():
+            role_emote = f'<:{val["emote name"]}:{emote_id}>' if val["emote name"] else f'{emote_id}'
+            caption_txt = f'- {val["caption"]}' if val["caption"] else ''
+            rr_msg += f'{role_emote} - <@&{val["role id"]}> {caption_txt}\n'
+
+    return rr_msg
 
 
 @bot.command(aliases=['rr'],
@@ -993,16 +1010,16 @@ def __roll_hate(fstr, fval, pool, roll_mode):
 def __hate_wildseas(ctx: Context, pool, fval):
     twist = __has_duplicates(pool)
     if not twist:
-        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{wildsea_dict[fval]}**.'
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{WILDSEA_DICT[fval]}**.'
     else:
-        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **Twist** and a **{wildsea_dict[fval]}**.'
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **Twist** and a **{WILDSEA_DICT[fval]}**.'
     return __roll_hate(fstr, fval, pool, RollModeEnum.WILDSEAS.value)
 
 
 def __hate_fitd(ctx: Context, pool, fval):
     crit = pool.count(6) >= 2
     if not crit:
-        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{fitd_dict[fval]}**.'
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{FITD_DICT[fval]}**.'
     else:
         fstr = f'{ctx.message.author.mention}, you rolled 10d for a **Critical Success**.'
     return __roll_hate(fstr, fval, pool, RollModeEnum.FITD.value)
@@ -1011,7 +1028,7 @@ def __hate_fitd(ctx: Context, pool, fval):
 def __hate_cain(ctx: Context, pool, fval):
     num_success = len([x for x in pool if x > 3])
     if num_success <= 1:
-        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{cain_dict[fval]}**.'
+        fstr = f'{ctx.message.author.mention}, you rolled 10d for a **{CAIN_DICT[fval]}**.'
     else:
         fstr = f'{ctx.message.author.mention}, you rolled 10d for {num_success} **Successes**.'
     return __roll_hate(fstr, fval, pool, RollModeEnum.CAIN.value)
@@ -1039,7 +1056,7 @@ def __roll_risk_msg():
     return """
 ```ansi
 [1mRisk[0m: You rolled {roll} for {risk}
-```""".format(roll=roll, risk=risk_dict[roll])
+```""".format(roll=roll, risk=RISK_DICT[roll])
 
 
 @bot.command(aliases=['r'], help='roll risk (only usable with Cain)')
@@ -1068,7 +1085,7 @@ def __roll_cain(original_msg: discord.Message, message: str, dice: int, is_risky
         if is_hard:
             fstr += ' with *hard*'
         if num_success <= 1:
-            fstr += f' for a **{cain_dict_hard[fval] if is_hard else cain_dict[fval]}**'
+            fstr += f' for a **{CAIN_DICT_HARD[fval] if is_hard else CAIN_DICT[fval]}**'
         else:
             fstr += f' for {num_success} **Successes**'
         fstr += f'{f"; roll for `{message}`" if message else ""}.'
@@ -1082,7 +1099,7 @@ def __roll_cain(original_msg: discord.Message, message: str, dice: int, is_risky
         fstr = f'{original_msg.author.mention}, you rolled {dice}d'
         if is_hard:
             fstr += ' with *hard*'
-        fstr += f' for a **{cain_dict_hard[fval] if is_hard else cain_dict[fval]}**'
+        fstr += f' for a **{CAIN_DICT_HARD[fval] if is_hard else CAIN_DICT[fval]}**'
         fstr += f'{f"; roll for `{message}`" if message else ""}.'
         fstr += f' [`{dice}d`: **{fval}**; `{sorted(pool)[0]}`, '
         for x in sorted(pool)[1:]:
@@ -1108,7 +1125,7 @@ def __roll_wildsea(original_msg: discord.Message,
         pool = [random.randint(1, 6)]
         fval = max(pool)
         fstr = (f'{original_msg.author.mention}, you rolled {dice}d'
-                f' for a **{wildsea_dict[fval] if fval < 6 else wildsea_dict[fval - 1]}**'
+                f' for a **{WILDSEA_DICT[fval] if fval < 6 else WILDSEA_DICT[fval - 1]}**'
                 f'{f"; roll for `{message}`" if message else ""}.')
         fstr += f' [`{dice}d`: **{fval}**; '
         for x in (sorted(pool, reverse=True) if sort_dice else pool):
@@ -1128,11 +1145,11 @@ def __roll_wildsea(original_msg: discord.Message,
 
             if not twist:
                 fstr = (f'{original_msg.author.mention}, you rolled {dice}d'
-                        f' with cut of {cut} for a **{wildsea_dict[fval]}**'
+                        f' with cut of {cut} for a **{WILDSEA_DICT[fval]}**'
                         f'{f"; roll for `{message}`" if message else ""}.')
             else:
                 fstr = (f'{original_msg.author.mention}, you rolled {dice}d'
-                        f'{f" with cut of {cut} for a **Twist** and a **{wildsea_dict[fval]}**"}'
+                        f'{f" with cut of {cut} for a **Twist** and a **{WILDSEA_DICT[fval]}**"}'
                         f'{f"; roll for `{message}`" if message else ""}.')
 
             cut_count = 0
@@ -1150,11 +1167,11 @@ def __roll_wildsea(original_msg: discord.Message,
 
             if not twist:
                 fstr = (f'{original_msg.author.mention}, you rolled {dice}d'
-                        f' for a **{wildsea_dict[fval]}**'
+                        f' for a **{WILDSEA_DICT[fval]}**'
                         f'{f"; roll for `{message}`" if message else ""}.')
             else:
                 fstr = (f'{original_msg.author.mention}, you rolled {dice}d'
-                        f' for a **Twist** and a **{wildsea_dict[fval]}**'
+                        f' for a **Twist** and a **{WILDSEA_DICT[fval]}**'
                         f'{f"; roll for `{message}`" if message else ""}.')
 
             fstr += f' [`{dice}d`: **{fval}**; '
@@ -1165,7 +1182,7 @@ def __roll_wildsea(original_msg: discord.Message,
         pool = [random.randint(1, 6) for _ in range(2 - dice)]
         fval = min(pool)
         fstr = (f'{original_msg.author.mention}, you rolled {dice}d'
-                f' for a **{wildsea_dict[fval]}**'
+                f' for a **{WILDSEA_DICT[fval]}**'
                 f'{f"; roll for `{message}`" if message else ""}.')
 
         fstr += f' [`{dice}d`: **{fval}**; `{sorted(pool)[0]}`, '
@@ -1190,7 +1207,7 @@ def __roll_fitd(original_msg: discord.Message,
         crit = pool.count(6) >= 2
         if not crit:
             fstr = (f'{original_msg.author.mention}, you rolled {dice}d'
-                    f' for a **{fitd_dict[fval]}**'
+                    f' for a **{FITD_DICT[fval]}**'
                     f'{f"; roll for `{message}`" if message else ""}.')
         else:
             fstr = (f'{original_msg.author.mention}, you rolled {dice}d'
@@ -1205,7 +1222,7 @@ def __roll_fitd(original_msg: discord.Message,
         pool = [random.randint(1, 6) for _ in range(2 - dice)]
         fval = min(pool)
         fstr = (f'{original_msg.author.mention}, you rolled {dice}d'
-                f' for a **{fitd_dict[fval]}**'
+                f' for a **{FITD_DICT[fval]}**'
                 f'{f"; roll for `{message}`" if message else ""}.')
 
         fstr += f' [`{dice}d`: **{fval}**; `{sorted(pool)[0]}`, '
