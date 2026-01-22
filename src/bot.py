@@ -175,6 +175,21 @@ async def on_message(message: discord.Message):
         message.content = message.content[1:]
         await bot.process_commands(message)
 
+    await process_message(message)
+
+
+async def process_message(message: discord.Message):
+    # remove leika smile for only nugget
+    if message.author.id == int(LEIKA_SMILER_ID) and (
+            cleaned_msg := re.sub(LEIKA_SMILE_PATTERN, '', message.content)
+    ) != message.content:
+        if len(cleaned_msg) > 0:
+            await __say_with_webhook(cleaned_msg,
+                                     message.author.display_name,
+                                     message.author.avatar.url,
+                                     message.channel)
+        await message.delete()
+
 
 @bot.event
 async def on_raw_reaction_add(e: discord.RawReactionActionEvent):
