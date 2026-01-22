@@ -8,14 +8,12 @@ import logging
 import uuid
 
 import dateparser
-import dotenv
 import discord
 import pytz
 import uwuipy
 import feedparser
 import easyocr
 
-from enum import Enum
 from datetime import datetime, timedelta
 from dateutil import parser, tz
 from PIL import Image
@@ -23,25 +21,21 @@ from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown, Context
 from simpleeval import simple_eval, InvalidExpression
 
-PFP_SIZE = (200, 200)
-MAINT_UPDATE_LOOP_TIMER = 5 * 60  # update every 5 mins
-
-TIMEZONES = ['Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Monrousing', 'America/Anchorage',
-             'America/Chicago', 'America/Denver', 'America/Edmonton', 'America/Jamaica', 'America/Los_Angeles',
-             'America/Mexico City', 'America/Montreal', 'America/New_York', 'America/Phoenix', 'America/Puerto_Rico',
-             'America/Sao Paulo', 'America/Toronto', 'America/Vancouver', 'Asia/Hong_Kong', 'Asia/Jerusalem',
-             'Asia/Manila', 'Asia/Seoul', 'Asia/Taipei', 'Asia/Tokyo', 'Atlantic/Reykjavik', 'Australia/Perth',
-             'Australia/Sydney', 'Europe/Athens', 'Europe/Berlin', 'Europe/Brussels', 'Europe/Copenhagen',
-             'Europe/Lisbon', 'Europe/London', 'Europe/Madrid', 'Europe/Moscow', 'Europe/Paris', 'Europe/Prague',
-             'Europe/Rome', 'Europe/Warsaw', 'Pacific/Auckland', 'Pacific/Guam', 'Pacific/Honolulu', 'UTC']
-
-env = dotenv.dotenv_values()
-COMMAND_PREFIX = env.get('PREFIX')
-OWNER_ID = env.get('OWNER_ID')
-BOT_ID = env.get('BOT_ID')
-MEAT_SHIELD_ID = env.get('MEAT_SHIELD')
-EXPLODE_ID = env.get('EXPLODE')
-DEBUG = int(env.get('DEBUG', 0))
+from src.const import PFP_SIZE, \
+    MAINT_UPDATE_LOOP_TIMER, \
+    TIMEZONES, \
+    env, \
+    COMMAND_PREFIX, \
+    OWNER_ID, \
+    BOT_ID, \
+    MEAT_SHIELD_ID, \
+    LEIKA_SMILER_ID, \
+    EXPLODE_ID, \
+    DEBUG, \
+    LEIKA_SMILE_PATTERN, \
+    ROLL_HELP, \
+    MONOBOT_WEBHOOK_NAME, \
+    RollModeEnum, NUM_TO_EMOTE, HATE_WEIGHTS, HATE_LIST
 
 log = logging.getLogger('MonoBot')
 logging.basicConfig(format='%(asctime)s:%(name)s:%(levelname)s:%(funcName)s:%(message)s',
@@ -113,69 +107,6 @@ uwu_factory = uwuipy.Uwuipy(face_chance=.075)
 if not DEBUG:
     ocr_reader = easyocr.Reader(['en'])
     rss_url = 'https://store.steampowered.com/feeds/news/app/1973530/'
-
-
-class GuildStatus(Enum):
-    TOUCHSONAR = 0
-
-
-wildsea_dict = {
-    1: 'Failure',
-    2: 'Failure',
-    3: 'Failure',
-    4: 'Conflict',
-    5: 'Conflict',
-    6: 'Success'
-}
-
-fitd_dict = {
-    1: 'Failure',
-    2: 'Failure',
-    3: 'Failure',
-    4: 'Success (with consequence)',
-    5: 'Success (with consequence)',
-    6: 'Success'
-}
-
-risk_dict = {
-    1: '[2;31ma much worse result[0m',
-    2: '[2;33ma worse result[0m',
-    3: '[2;33ma worse result[0m',
-    4: '[2;32man expected result[0m',
-    5: '[2;32man expected result[0m',
-    6: '[2;36ma better result[0m'
-}
-
-cain_dict = {
-    1: 'Failure',
-    2: 'Failure',
-    3: 'Failure',
-    4: 'Success',
-    5: 'Success',
-    6: 'Success'
-}
-
-cain_dict_hard = {
-    1: 'Failure',
-    2: 'Failure',
-    3: 'Failure',
-    4: 'Failure',
-    5: 'Failure',
-    6: 'Success'
-}
-
-hunter_dict = {
-    1: 'Failure',
-    2: 'Failure',
-    3: 'Failure',
-    4: 'Failure',
-    5: 'Failure',
-    6: 'Success',
-    7: 'Success',
-    8: 'Success',
-    9: 'Success',
-    10: 'Success'
-}
 
 
 @bot.event
@@ -337,22 +268,6 @@ async def on_guild_role_delete(role: discord.Role):
             json.dump(data, file)
 
 
-ROLL_HELP = f"""
-syntax key: [these are required] (these are optional)
-\t**fitd mode**: {COMMAND_PREFIX}[num dice]d(num sides)(! for unsorted rolls) #(message)
-\t\texample: {COMMAND_PREFIX}4d! #this will roll 4 d6s unsorted
-\t**wildseas mode**: {COMMAND_PREFIX}[num dice]d(num sides)(! for unsorted rolls) -(num dice to cut) #(message)
-\t\texample: {COMMAND_PREFIX}3d! -1 #this will roll 3 d6s unsorted with a cut of 1
-\t**cain mode**: {COMMAND_PREFIX}[num dice]d(num sides)(! for unsorted rolls) (h for hard)(r for risky) #(message)
-\t\texample: {COMMAND_PREFIX}5d hr #this will roll 5 d6s with hard and risky results
-\t**hunter mode**: {COMMAND_PREFIX}[num dice]d(num sides)(! for unsorted rolls) (d[num desperation dice]) #(message)
-\t\texample: {COMMAND_PREFIX}3d d2 #this will roll 3 d10s with 2 d10 desperation dice
-\t**persona mode**: {COMMAND_PREFIX}[num dice]d(num sides)(! for unsorted rolls) #(message)
-\t\texample: {COMMAND_PREFIX}4d #this will roll 4 d6s
-\t**delta green mode**: use `{COMMAND_PREFIX}help skill` or `{COMMAND_PREFIX}help lethal`
-"""
-
-
 @bot.command(help='sends this message', usage=['help', 'help CMD'])
 async def help(ctx: Context):
     cmd = ctx.message.content.split()
@@ -385,6 +300,14 @@ async def help(ctx: Context):
         await ctx.reply(help_msg, mention_author=False)
     else:
         await ctx.reply(f'command "{cmd_name}" not found', mention_author=False)
+
+
+async def __get_webhook(channel: discord.TextChannel):
+    webhooks = await channel.webhooks()
+    for webhook in webhooks:
+        if webhook.name == MONOBOT_WEBHOOK_NAME:
+            return webhook
+    return await channel.create_webhook(name=MONOBOT_WEBHOOK_NAME)
 
 
 @bot.command(aliases=['rr'],
@@ -782,15 +705,6 @@ async def choose(ctx: Context, *, msg=''):
                         mention_author=False)
 
 
-class RollModeEnum(Enum):
-    WILDSEAS = "wildseas"
-    FITD = "fitd"
-    CAIN = "cain"
-    HUNTER = "hunter"
-    PERSONA = "persona"
-    DG = "deltagreen"
-
-
 modes = {e.value for e in RollModeEnum}
 
 
@@ -890,19 +804,6 @@ async def nodice(message: discord.Message):
     await message.reply(f'{message.author.mention} {random.choice(choice)}', mention_author=False)
 
 
-num_to_word = {
-    1: '1️⃣',
-    2: '2️⃣',
-    3: '3️⃣',
-    4: '4️⃣',
-    5: '5️⃣',
-    6: '6️⃣',
-    7: '7️⃣',
-    8: '8️⃣',
-    9: '9️⃣'
-}
-
-
 @bot.command(aliases=['p'],
              help='sets up a poll, add options by passing a list of comma-separated choices (limit of 9)',
              usage=['poll CHOICE, CHOICE, CHOICE, ...'])
@@ -923,11 +824,11 @@ async def poll(ctx: Context, *, msg=''):
 
     message = ''
     for i in range(len(options)):
-        message += f'{num_to_word[i + 1]}: {options[i]}\n'
+        message += f'{NUM_TO_EMOTE[i + 1]}: {options[i]}\n'
     sent_msg = await ctx.reply(message, mention_author=False)
 
     for i in range(len(options)):
-        await sent_msg.add_reaction(f'{num_to_word[i + 1]}')
+        await sent_msg.add_reaction(f'{NUM_TO_EMOTE[i + 1]}')
 
 
 @bot.command(aliases=['qp'], help='sets up a yes/no poll')
@@ -1072,23 +973,13 @@ def __has_duplicates(lst):
     return False
 
 
-weights = [1, .5, .25, .02, .01, .001]
-hate_list = [
-    '\neat shit!!!!!',
-    '\nexplode???',
-    '\n>:3',
-    '\nLOL',
-    '\nlmao'
-]
-
-
 def __roll_hate(fstr, fval, pool, roll_mode):
     fstr += f' [`10d`: **{fval}**; '
     for x in pool:
         fstr += f'`{x}`, '
     fstr = fstr[:-2] + "]"
     if fval <= 3:
-        c = random.choice(hate_list)
+        c = random.choice(HATE_LIST)
         fstr += c
     elif roll_mode != RollModeEnum.CAIN.value:
         if fval == 6:
@@ -1128,7 +1019,7 @@ def __hate_cain(ctx: Context, pool, fval):
 
 @bot.command(help='let the bot vent some rage, may or may not improve your rolls')
 async def hate(ctx: Context, *, msg=""):
-    pool = [random.choices(range(1, 7), weights=weights)[0] for _ in range(10)]
+    pool = [random.choices(range(1, 7), weights=HATE_WEIGHTS)[0] for _ in range(10)]
     pool = sorted(pool, reverse=True)
     fval = max(pool)
 
