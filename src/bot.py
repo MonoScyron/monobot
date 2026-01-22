@@ -21,7 +21,7 @@ from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown, Context
 from simpleeval import simple_eval, InvalidExpression
 
-from src.const import PFP_SIZE, \
+from const import PFP_SIZE, \
     MAINT_UPDATE_LOOP_TIMER, \
     TIMEZONES, \
     env, \
