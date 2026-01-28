@@ -306,7 +306,10 @@ async def leika(ctx: commands.Context, *, msg=''):
 
 async def __slop_spotted(message: discord.Message):
     if 'slop' in message.content and random.random() < 0.025:
-        await message.reply(f'SLOP SPOTTED {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE}')
+        await message.reply(f'SLOP SPOTTED {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} '
+                            f'{EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} '
+                            f'{EXPLODE_EMOTE}',
+                            mention_author=False)
 
 
 async def __leika_filter(message: discord.Message) -> bool:
