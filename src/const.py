@@ -1,12 +1,15 @@
 import re
 from enum import Enum
+from re import RegexFlag
 
 import dotenv
 
 PFP_SIZE = (200, 200)
 MAINT_UPDATE_LOOP_TIMER = 5 * 60  # update every 5 mins
-LEIKA_SMILE_PATTERN = re.compile(r"<:LeikaSmile:\d+?>")
+LEIKA_PATTERN = re.compile(r"<:.*?leika.*?:\d+?>", flags=RegexFlag.IGNORECASE)
 MONOBOT_WEBHOOK_NAME = "Monobot Webhook"
+EXPLODE_EMOTE = '<:explode:1333259731640258581>'
+SOMEONE_EMOTE = '<:SomeoneSmile:1463708490001416375>'
 
 TIMEZONES = ['Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Monrousing', 'America/Anchorage',
              'America/Chicago', 'America/Denver', 'America/Edmonton', 'America/Jamaica', 'America/Los_Angeles',
@@ -22,7 +25,7 @@ COMMAND_PREFIX = env.get('PREFIX')
 OWNER_ID = env.get('OWNER_ID')
 BOT_ID = env.get('BOT_ID')
 MEAT_SHIELD_ID = env.get('MEAT_SHIELD')
-LEIKA_SMILER_ID = env.get('LEIKA_SMILER')
+LEIKA_SMILER_ID = env.get('LEIKA_SMILE')
 EXPLODE_ID = env.get('EXPLODE')
 DEBUG = int(env.get('DEBUG', 0))
 

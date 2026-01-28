@@ -32,10 +32,19 @@ from const import PFP_SIZE, \
     LEIKA_SMILER_ID, \
     EXPLODE_ID, \
     DEBUG, \
-    LEIKA_SMILE_PATTERN, \
+    LEIKA_PATTERN, \
     ROLL_HELP, \
     MONOBOT_WEBHOOK_NAME, \
-    RollModeEnum, NUM_TO_EMOTE, HATE_WEIGHTS, HATE_LIST, FITD_DICT, WILDSEA_DICT, CAIN_DICT, RISK_DICT, CAIN_DICT_HARD
+    RollModeEnum, \
+    NUM_TO_EMOTE, \
+    HATE_WEIGHTS, \
+    HATE_LIST, \
+    FITD_DICT, \
+    WILDSEA_DICT, \
+    CAIN_DICT, \
+    RISK_DICT, \
+    CAIN_DICT_HARD, \
+    EXPLODE_EMOTE, SOMEONE_EMOTE
 
 log = logging.getLogger('MonoBot')
 logging.basicConfig(format='%(asctime)s:%(name)s:%(levelname)s:%(funcName)s:%(message)s',
@@ -49,6 +58,7 @@ bot = commands.AutoShardedBot(command_prefix='', intents=intents, help_command=N
 
 alarms = {}
 webhook_cache = {}
+leika_privilege = True
 
 # TODO: Setup sqlite for data
 data = {
@@ -155,7 +165,7 @@ async def on_ready():
 async def on_command_error(ctx, error):
     log.error(f'command error: {error}')
     if isinstance(error, CommandOnCooldown):
-        await ctx.reply(f'you must wait before using that command again <:explode:1333259731640258581>',
+        await ctx.reply(f'you must wait before using that command again {EXPLODE_EMOTE}',
                         mention_author=False)
 
 
@@ -179,45 +189,40 @@ async def on_message(message: discord.Message):
 
 
 async def process_message(message: discord.Message):
-    # remove leika smile for only nugget
-    if message.author.id == int(LEIKA_SMILER_ID) and (
-            cleaned_msg := re.sub(LEIKA_SMILE_PATTERN, '', message.content)
-    ) != message.content:
-        if len(cleaned_msg) > 0:
-            await __say_with_webhook(cleaned_msg,
-                                     message.author.display_name,
-                                     message.author.avatar.url,
-                                     message.channel)
-        await message.delete()
+    await __slop_spotted(message)
+
+    if not leika_privilege:
+        await __leika_filter(message)
 
 
 @bot.event
-async def on_raw_reaction_add(e: discord.RawReactionActionEvent):
-    react_roles = data['react roles']
-    if str(e.guild_id) not in react_roles or 'message' not in react_roles[str(e.guild_id)]:
+async def on_raw_reaction_add(event: discord.RawReactionActionEvent):
+    if event.user_id == int(BOT_ID):
         return
 
-    guild_rr = react_roles[str(e.guild_id)]
-    if e.message_id == guild_rr['message']['id']:
-        member, role = await __get_member_and_role(e.guild_id,
-                                                   e.user_id,
-                                                   int(guild_rr['roles']
-                                                       [str(e.emoji.id) if e.emoji.id else e.emoji.name]['role id']))
-        await member.add_roles(role, atomic=True)
+    if not leika_privilege:
+        if await __process_reaction_add_leika_emote(event):
+            return
+
+    await __process_reaction_add_react_roles(event)
 
 
 @bot.event
-async def on_raw_reaction_remove(e: discord.RawReactionActionEvent):
-    react_roles = data['react roles']
-    if str(e.guild_id) not in react_roles or 'message' not in react_roles[str(e.guild_id)]:
+async def on_raw_reaction_remove(event: discord.RawReactionActionEvent):
+    if event.user_id == int(BOT_ID):
         return
 
-    guild_rr = react_roles[str(e.guild_id)]
-    if e.message_id == guild_rr['message']['id']:
-        member, role = await __get_member_and_role(e.guild_id,
-                                                   e.user_id,
+    react_roles = data['react roles']
+    if str(event.guild_id) not in react_roles or 'message' not in react_roles[str(event.guild_id)]:
+        return
+
+    guild_rr = react_roles[str(event.guild_id)]
+    if event.message_id == guild_rr['message']['id']:
+        member, role = await __get_member_and_role(event.guild_id,
+                                                   event.user_id,
                                                    int(guild_rr['roles']
-                                                       [str(e.emoji.id) if e.emoji.id else e.emoji.name]['role id']))
+                                                       [str(event.emoji.id) if event.emoji.id else event.emoji.name][
+                                                           'role id']))
         await member.remove_roles(role, atomic=True)
 
 
@@ -286,6 +291,64 @@ async def help(ctx: Context):
         await ctx.reply(help_msg, mention_author=False)
     else:
         await ctx.reply(f'command "{cmd_name}" not found', mention_author=False)
+
+
+@bot.command(usage=['leika'],
+             help='toggle leika privileges')
+async def leika(ctx: commands.Context, *, msg=''):
+    global leika_privilege
+    leika_privilege = not leika_privilege
+    if leika_privilege:
+        await ctx.send('your leika privileges are given')
+    else:
+        await ctx.send('your leika privileges are TAKEN AWAY')
+
+
+async def __slop_spotted(message: discord.Message):
+    if 'slop' in message.content and random.random() < 0.025:
+        await message.reply(f'SLOP SPOTTED {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE} {EXPLODE_EMOTE}')
+
+
+async def __leika_filter(message: discord.Message) -> bool:
+    """remove leika smile for only nugget, returns true if a message is edited"""
+    if message.author.id == int(LEIKA_SMILER_ID) and (
+            cleaned_msg := re.sub(LEIKA_PATTERN, '', message.content)
+    ) != message.content:
+        if len(cleaned_msg) > 0:
+            await __say_with_webhook(cleaned_msg,
+                                     message.author.display_name,
+                                     message.author.avatar.url,
+                                     message.channel)
+        await message.delete()
+        return True
+    return False
+
+
+async def __process_reaction_add_leika_emote(event: discord.RawReactionActionEvent) -> bool:
+    """if an emote is removed, returns true"""
+    if event.user_id == int(LEIKA_SMILER_ID) and re.match(LEIKA_PATTERN, str(event.emoji)):
+        channel = bot.get_channel(event.channel_id)
+        message = await channel.fetch_message(event.message_id)
+        user = await bot.fetch_user(event.user_id)
+        await message.remove_reaction(event.emoji, user)
+        await message.add_reaction(SOMEONE_EMOTE)
+        return True
+    return False
+
+
+async def __process_reaction_add_react_roles(event: discord.RawReactionActionEvent):
+    react_roles = data['react roles']
+    if str(event.guild_id) not in react_roles or 'message' not in react_roles[str(event.guild_id)]:
+        return
+
+    guild_rr = react_roles[str(event.guild_id)]
+    if event.message_id == guild_rr['message']['id']:
+        member, role = await __get_member_and_role(event.guild_id,
+                                                   event.user_id,
+                                                   int(guild_rr['roles']
+                                                       [str(event.emoji.id) if event.emoji.id else event.emoji.name][
+                                                           'role id']))
+        await member.add_roles(role, atomic=True)
 
 
 async def __say_with_webhook(content: str, username: str, avatar_url: str, channel: discord.TextChannel):
@@ -920,11 +983,11 @@ async def love(ctx: Context, *, msg=''):
             love_list = ['💕', '💝', '💖']
             await ctx.message.add_reaction(random.choice(love_list))
         else:
-            await ctx.message.add_reaction('<:explode:1333259731640258581>')
+            await ctx.message.add_reaction('%s' % EXPLODE_EMOTE)
 
     elif ctx.message.author.id == int(MEAT_SHIELD_ID):
         if random.random() < 0.5:
-            await ctx.message.add_reaction('<:explode:1333259731640258581>')
+            await ctx.message.add_reaction(EXPLODE_EMOTE)
         else:
             love_list = ['⭐', '✨', '💕', '💝', '💖']
             for lv in love_list:
@@ -932,7 +995,7 @@ async def love(ctx: Context, *, msg=''):
 
     else:
         if random.random() < 0.05:
-            await ctx.message.add_reaction('<:explode:1333259731640258581>')
+            await ctx.message.add_reaction(EXPLODE_EMOTE)
         else:
             love_list = ['💕', '💝', '💖']
             await ctx.message.add_reaction(random.choice(love_list))
@@ -985,7 +1048,7 @@ async def explode(ctx: Context, *, msg=""):
         message = ''
         limit = 0
         for _ in range(count):
-            message += '<:explode:1333259731640258581> '
+            message += f'{EXPLODE_EMOTE} '
             limit += 1
             if limit >= 30:
                 await ctx.reply(message, mention_author=False)
