@@ -6,7 +6,6 @@ dateparser==1.2.2
 discord==2.3.2
 discord.py==2.6.4
 easyocr==1.7.2
-feedparser==6.0.12
 filelock==3.20.2
 frozenlist==1.8.0
 fsspec==2025.12.0
@@ -63,3 +62,5 @@ tzdata==2025.3
 tzlocal==5.3.1
 uwuipy==0.1.10
 yarl==1.22.0
+
+requests
