@@ -1,8 +1,10 @@
 import re
 from enum import Enum
 from re import RegexFlag
+from typing import Tuple
 
 import dotenv
+from easyocr import Reader
 
 PFP_SIZE = (200, 200)
 MAINT_UPDATE_LOOP_TIMER = 5 * 60  # update every 5 mins
@@ -19,6 +21,15 @@ TIMEZONES = ['Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Monr
              'Australia/Sydney', 'Europe/Athens', 'Europe/Berlin', 'Europe/Brussels', 'Europe/Copenhagen',
              'Europe/Lisbon', 'Europe/London', 'Europe/Madrid', 'Europe/Moscow', 'Europe/Paris', 'Europe/Prague',
              'Europe/Rome', 'Europe/Warsaw', 'Pacific/Auckland', 'Pacific/Guam', 'Pacific/Honolulu', 'UTC']
+
+GAME_FEED_PARAMS = {
+    "appid": 1973530,
+    "count": 16,
+    "maxlength": 1000,
+    "format": "json"
+}
+STEAM_CLAN_IMAGE = 'https://clan.fastly.steamstatic.com/images'
+STEAM_NEWS_FEED_URL = "https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
 
 env = dotenv.dotenv_values()
 COMMAND_PREFIX = env.get('PREFIX')
@@ -52,6 +63,43 @@ class RollModeEnum(Enum):
     HUNTER = "hunter"
     PERSONA = "persona"
     DG = "deltagreen"
+
+
+class LimbusScheduledUpdateNews:
+    title: str
+    content: str
+    reader: Reader
+
+    def __init__(self, title, content, ocr_reader):
+        self.title = title
+        self.content = content
+        self.reader = ocr_reader
+
+    def get_update_text(self) -> Tuple[str, str, str, str]:
+        """
+        Returns (curr maint title, from time str, to time str, date)
+        """
+        if "{STEAM_CLAN_IMAGE}" not in self.content:
+            raise Exception("content given is not update news")
+
+        url_fragment = self.content.split(' ')[0]
+        image_url = f"{url_fragment.replace('{STEAM_CLAN_IMAGE}', f'{STEAM_CLAN_IMAGE}')}"
+
+        detection = self.reader.readtext(image_url)
+
+        detect_str = ''
+        for txt in detection:
+            detect_str += txt[1].strip() + ' '
+        detect_str = detect_str.strip()
+
+        time_strs = [w for w in detect_str.split('from') if '[AM]' in w][0]
+        time_strs = time_strs.split('on')[0].split('through')
+
+        from_time_str = time_strs[0].replace('[', '').replace(']', '').strip()
+        to_time_str = time_strs[1].replace('[', '').replace(']', '').strip()
+        date_str = self.title.replace('Scheduled Update Notice', '').strip()
+
+        return self.title, from_time_str, to_time_str, date_str
 
 
 WILDSEA_DICT = {

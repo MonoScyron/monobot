@@ -10,8 +10,8 @@ import uuid
 import dateparser
 import discord
 import pytz
+import requests
 import uwuipy
-import feedparser
 import easyocr
 
 from datetime import datetime, timedelta
@@ -21,7 +21,7 @@ from discord.ext import commands
 from discord.ext.commands import CommandOnCooldown, Context
 from simpleeval import simple_eval, InvalidExpression
 
-from const import PFP_SIZE, \
+from provider import PFP_SIZE, \
     MAINT_UPDATE_LOOP_TIMER, \
     TIMEZONES, \
     env, \
@@ -44,7 +44,7 @@ from const import PFP_SIZE, \
     CAIN_DICT, \
     RISK_DICT, \
     CAIN_DICT_HARD, \
-    EXPLODE_EMOTE, SOMEONE_EMOTE
+    EXPLODE_EMOTE, SOMEONE_EMOTE, STEAM_NEWS_FEED_URL, GAME_FEED_PARAMS, LimbusScheduledUpdateNews
 
 log = logging.getLogger('MonoBot')
 logging.basicConfig(format='%(asctime)s:%(name)s:%(levelname)s:%(funcName)s:%(message)s',
@@ -127,7 +127,7 @@ async def on_ready():
     await bot.change_presence(activity=activity)
 
     if not DEBUG:
-        asyncio.create_task(__headless_maint_update())
+        asyncio.create_task(__headless_maint_update_loop())
 
         bad_reminders = []
         for reminder_id, reminder in data['reminders'].items():
@@ -690,50 +690,52 @@ async def timezone(ctx: commands.Context, *, msg=''):
     await ctx.reply('timezone changed!', mention_author=False)
 
 
-def __maint_update(curr_news):
-    date_str = curr_news.title.replace('Scheduled Update Notice', '')
-    image_url = curr_news.summary.split('<img src="')[1].split('"')[0]
-    detection = ocr_reader.readtext(image_url)
+def __fetch_scheduled_update_news() -> LimbusScheduledUpdateNews | None:
+    try:
+        response = requests.get(STEAM_NEWS_FEED_URL, params=GAME_FEED_PARAMS).json()
 
-    detect_str = ''
-    for txt in detection:
-        detect_str += txt[1].strip() + ' '
-    detect_str = detect_str.strip()
+        parsed_news_list = [
+            (item['title'], item['contents']) for item in response["appnews"]["newsitems"] if
+            'Scheduled Update Notice' in item['title'] and
+            'Error' not in item['title'] and
+            'Correction' not in item['title']
+        ]
 
-    time_strs = [w for w in detect_str.split('from') if '[AM]' in w][0]
-    time_strs = time_strs.split('on')[0].split('through')
+        if len(parsed_news_list) == 0:
+            log.warning('no scheduled update news found')
+            return None
 
-    from_time_str = time_strs[0].replace('[', '').replace(']', '')
-    to_time_str = time_strs[1].replace('[', '').replace(']', '')
+        title, content = parsed_news_list[0]
+        return LimbusScheduledUpdateNews(title, content, ocr_reader)
+    except requests.exceptions.RequestException as e:
+        log.error(f'failed to fetch steam news due to request exception: {e}')
+        raise Exception(e)
+    except Exception as e:
+        log.error(f'failed to fetch steam news: {e}')
+        raise Exception(e)
 
-    data['maint']['curr maint'] = curr_news.title.strip()
-    data['maint']['from time'] = from_time_str.strip()
-    data['maint']['to time'] = to_time_str.strip()
-    data['maint']['date'] = date_str.strip()
+
+def __maint_update(curr_news: LimbusScheduledUpdateNews):
+    curr_title, from_time, to_time, date = curr_news.get_update_text()
+
+    data['maint']['curr maint'] = curr_title
+    data['maint']['from time'] = from_time
+    data['maint']['to time'] = to_time
+    data['maint']['date'] = date
     with open('data.json', 'w') as file:
         json.dump(data, file)
 
     log.info('updating maint to: ' + str(data['maint']))
 
 
-def __get_scheduled_update_news(entries):
-    return [news for news in entries if
-            'Scheduled Update Notice' in news.title and 'Error' not in news.title and 'Correction' not in news.title]
-
-
-async def __headless_maint_update():
+async def __headless_maint_update_loop():
     await bot.wait_until_ready()
 
     log.debug(f'headless maint update loop start')
 
     while not bot.is_closed():
-        feed = feedparser.parse(rss_url)
-        if feed.bozo:
-            log.error('failed to fetch steam news stream')
-        else:
-            update_news = __get_scheduled_update_news(feed.entries)
-
-            curr_news = update_news[0]
+        curr_news = __fetch_scheduled_update_news()
+        if curr_news:
             if 'curr maint' not in data['maint'] or data['maint']['curr maint'] != curr_news.title:
                 log.info('cached maint news out of date, fetching and parsing online news headlessly...')
                 __maint_update(curr_news)
@@ -752,17 +754,11 @@ async def maint(ctx: Context):
         await ctx.reply('wouldnt you like to know, pisserboy?', mention_author=False)
         return
 
-    feed = feedparser.parse(rss_url)
-    if feed.bozo:
-        await ctx.reply('failed to fetch steam news stream', mention_author=False)
-        return
-
-    update_news = __get_scheduled_update_news(feed.entries)
-    if len(update_news) == 0:
+    curr_news = __fetch_scheduled_update_news()
+    if not curr_news:
         await ctx.reply('no recent scheduled updates found', mention_author=False)
         return
 
-    curr_news = update_news[0]
     if 'curr maint' in data['maint'] and data['maint']['curr maint'] == curr_news.title:
         log.info('fetching cached current maint news...')
         from_time_str = data['maint']['from time']
