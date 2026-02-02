@@ -28,6 +28,9 @@ GAME_FEED_PARAMS = {
     "maxlength": 1000,
     "format": "json"
 }
+GAME_FEED_HEADERS = {
+    "Cache-Control": "no-cache"
+}
 STEAM_CLAN_IMAGE = 'https://clan.fastly.steamstatic.com/images'
 STEAM_NEWS_FEED_URL = "https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
 

@@ -44,7 +44,12 @@ from provider import PFP_SIZE, \
     CAIN_DICT, \
     RISK_DICT, \
     CAIN_DICT_HARD, \
-    EXPLODE_EMOTE, SOMEONE_EMOTE, STEAM_NEWS_FEED_URL, GAME_FEED_PARAMS, LimbusScheduledUpdateNews
+    EXPLODE_EMOTE, \
+    SOMEONE_EMOTE, \
+    STEAM_NEWS_FEED_URL, \
+    GAME_FEED_PARAMS, \
+    LimbusScheduledUpdateNews, \
+    GAME_FEED_HEADERS
 
 log = logging.getLogger('MonoBot')
 logging.basicConfig(format='%(asctime)s:%(name)s:%(levelname)s:%(funcName)s:%(message)s',
@@ -692,7 +697,7 @@ async def timezone(ctx: commands.Context, *, msg=''):
 
 def __fetch_scheduled_update_news() -> LimbusScheduledUpdateNews | None:
     try:
-        response = requests.get(STEAM_NEWS_FEED_URL, params=GAME_FEED_PARAMS).json()
+        response = requests.get(STEAM_NEWS_FEED_URL, params=GAME_FEED_PARAMS, headers=GAME_FEED_HEADERS).json()
 
         parsed_news_list = [
             (item['title'], item['contents']) for item in response["appnews"]["newsitems"] if
@@ -700,6 +705,8 @@ def __fetch_scheduled_update_news() -> LimbusScheduledUpdateNews | None:
             'Error' not in item['title'] and
             'Correction' not in item['title']
         ]
+
+        log.info(f'found scheduled update news: {[news[0] for news in parsed_news_list]}')
 
         if len(parsed_news_list) == 0:
             log.warning('no scheduled update news found')
