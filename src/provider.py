@@ -1,4 +1,5 @@
 import re
+import time
 from enum import Enum
 from re import RegexFlag
 from typing import Tuple
@@ -7,7 +8,7 @@ import dotenv
 from easyocr import Reader
 
 PFP_SIZE = (200, 200)
-MAINT_UPDATE_LOOP_TIMER = 5 * 60  # update every 5 mins
+MAINT_UPDATE_LOOP_TIMER = 10 * 60  # update every 10 mins
 LEIKA_PATTERN = re.compile(r"<:.*?leika.*?:\d+?>", flags=RegexFlag.IGNORECASE)
 MONOBOT_WEBHOOK_NAME = "Monobot Webhook"
 EXPLODE_EMOTE = '<:explode:1333259731640258581>'
@@ -26,10 +27,12 @@ GAME_FEED_PARAMS = {
     "appid": 1973530,
     "count": 16,
     "maxlength": 1000,
-    "format": "json"
+    "format": "json",
+    "_": int(time.time())
 }
 GAME_FEED_HEADERS = {
-    "Cache-Control": "no-cache"
+    "Cache-Control": "no-cache",
+    "Expires": "0"
 }
 STEAM_CLAN_IMAGE = 'https://clan.fastly.steamstatic.com/images'
 STEAM_NEWS_FEED_URL = "https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
