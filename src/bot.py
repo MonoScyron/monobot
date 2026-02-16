@@ -6,6 +6,8 @@ import random
 import re
 import logging
 import uuid
+from collections.abc import Callable
+from typing import Tuple, List
 
 import dateparser
 import discord
@@ -49,7 +51,7 @@ from provider import PFP_SIZE, \
     STEAM_NEWS_FEED_URL, \
     GAME_FEED_PARAMS, \
     LimbusScheduledUpdateNews, \
-    GAME_FEED_HEADERS
+    GAME_FEED_HEADERS, MAINT_TIME_FILTER, KIT_FILTER, steam_clan_to_url
 
 log = logging.getLogger('MonoBot')
 logging.basicConfig(format='%(asctime)s:%(name)s:%(levelname)s:%(funcName)s:%(message)s',
@@ -695,31 +697,31 @@ async def timezone(ctx: commands.Context, *, msg=''):
     await ctx.reply('timezone changed!', mention_author=False)
 
 
-def __fetch_scheduled_update_news() -> LimbusScheduledUpdateNews | None:
+def __fetch_news_with_filter(news_filter: Callable) -> List[Tuple[str, str]]:
     try:
         response = requests.get(STEAM_NEWS_FEED_URL, params=GAME_FEED_PARAMS, headers=GAME_FEED_HEADERS).json()
-
         parsed_news_list = [
-            (item['title'], item['contents']) for item in response["appnews"]["newsitems"] if
-            'Scheduled Update Notice' in item['title'] and
-            'Error' not in item['title'] and
-            'Correction' not in item['title']
+            (item['title'], item['contents']) for item in response["appnews"]["newsitems"] if news_filter(item)
         ]
-
-        log.info(f'found scheduled update news: {[news[0] for news in parsed_news_list]}')
-
-        if len(parsed_news_list) == 0:
-            log.warning('no scheduled update news found')
-            return None
-
-        title, content = parsed_news_list[0]
-        return LimbusScheduledUpdateNews(title, content, ocr_reader)
+        return parsed_news_list
     except requests.exceptions.RequestException as e:
         log.error(f'failed to fetch steam news due to request exception: {e}')
         raise Exception(e)
     except Exception as e:
         log.error(f'failed to fetch steam news: {e}')
         raise Exception(e)
+
+
+def __fetch_scheduled_update_news() -> LimbusScheduledUpdateNews | None:
+    parsed_news_list = __fetch_news_with_filter(MAINT_TIME_FILTER)
+    log.info(f'found scheduled update news: {[news[0] for news in parsed_news_list]}')
+
+    if len(parsed_news_list) == 0:
+        log.warning('no scheduled update news found')
+        return None
+
+    title, content = parsed_news_list[0]
+    return LimbusScheduledUpdateNews(title, content, ocr_reader)
 
 
 def __maint_update(curr_news: LimbusScheduledUpdateNews):
@@ -793,6 +795,17 @@ async def maint(ctx: Context):
                         mention_author=False)
     else:
         await ctx.reply(f'the last maintenance ended <t:{to_timestamp}:R> at <t:{to_timestamp}>', mention_author=False)
+
+
+@bot.command(help='fetch most the most recent kit preview from Limbus')
+@commands.cooldown(1, 30)
+async def kit(ctx: Context, *, msg=''):
+    parsed_kits_list = __fetch_news_with_filter(KIT_FILTER)
+    title, content = parsed_kits_list[0]
+    images = content.split('.png')
+    image_urls = ' '.join([f"[page {i}]({steam_clan_to_url(f'{image.strip()}.png')})" for i, image in enumerate(images)
+                           if image])
+    await ctx.reply(f'{title} - {image_urls}', mention_author=False)
 
 
 @bot.command(help='chooses from list of comma-separated choices', usage=['choose CHOICE, CHOICE, CHOICE, ...'])

@@ -71,6 +71,12 @@ class RollModeEnum(Enum):
     DG = "deltagreen"
 
 
+def steam_clan_to_url(unparsed_url: str) -> str:
+    if "{STEAM_CLAN_IMAGE}" not in unparsed_url:
+        raise Exception(f'url is not convertable from steam clan image: {unparsed_url}')
+    return f"{unparsed_url.replace('{STEAM_CLAN_IMAGE}', f'{STEAM_CLAN_IMAGE}')}"
+
+
 class LimbusScheduledUpdateNews:
     title: str
     content: str
@@ -85,11 +91,8 @@ class LimbusScheduledUpdateNews:
         """
         Returns (curr maint title, from time str, to time str, date)
         """
-        if "{STEAM_CLAN_IMAGE}" not in self.content:
-            raise Exception("content given is not update news")
-
         url_fragment = self.content.split(' ')[0]
-        image_url = f"{url_fragment.replace('{STEAM_CLAN_IMAGE}', f'{STEAM_CLAN_IMAGE}')}"
+        image_url = steam_clan_to_url(url_fragment)
 
         detection = self.reader.readtext(image_url)
 
@@ -181,3 +184,7 @@ HATE_LIST = [
     '\nLOL',
     '\nlmao'
 ]
+
+MAINT_TIME_FILTER = lambda item: 'Scheduled Update Notice' in item['title'] and 'Error' not in item[
+    'title'] and 'Correction' not in item['title']
+KIT_FILTER = lambda item: 'New Identity Preview' in item['title']
