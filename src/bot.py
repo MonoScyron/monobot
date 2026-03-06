@@ -697,7 +697,11 @@ async def timezone(ctx: commands.Context, *, msg=''):
     await ctx.reply('timezone changed!', mention_author=False)
 
 
-def __fetch_news_with_filter(news_filter: Callable) -> List[Tuple[str, str]]:
+def __fetch_news_with_filter(news_filter: Callable[[dict], [bool]]) -> List[Tuple[str, str]]:
+    """
+    Returns List of (titles, contents) of Steam news filtered by `news_filter` function, where `news_filter` takes in
+    the a single Steam response object and returns false if the news should be filtered.
+    """
     try:
         response = requests.get(STEAM_NEWS_FEED_URL, params=GAME_FEED_PARAMS, headers=GAME_FEED_HEADERS).json()
         parsed_news_list = [
@@ -801,6 +805,10 @@ async def maint(ctx: Context):
 @commands.cooldown(1, 30)
 async def kit(ctx: Context, *, msg=''):
     parsed_kits_list = __fetch_news_with_filter(KIT_FILTER)
+    if len(parsed_kits_list) == 0:
+        log.warning(f'no kits found when fetching kits')
+        return
+
     title, content = parsed_kits_list[0]
     images = content.split('.png')
     image_urls = ' '.join([f"[page {i}]({steam_clan_to_url(f'{image.strip()}.png')})" for i, image in enumerate(images)

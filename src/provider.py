@@ -187,4 +187,5 @@ HATE_LIST = [
 
 MAINT_TIME_FILTER = lambda item: 'Scheduled Update Notice' in item['title'] and 'Error' not in item[
     'title'] and 'Correction' not in item['title']
-KIT_FILTER = lambda item: 'New Identity Preview' in item['title']
+KIT_FILTER = lambda item: 'New Identity Preview' in item['title'] or 'Walpurgis Night Target Extraction' in item[
+    'title']
