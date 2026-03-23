@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 from enum import Enum
@@ -81,16 +82,22 @@ class LimbusScheduledUpdateNews:
     title: str
     content: str
     reader: Reader
+    log = logging.getLogger('LimbusScheduledUpdateNews')
 
     def __init__(self, title, content, ocr_reader):
         self.title = title
         self.content = content
         self.reader = ocr_reader
+        logging.basicConfig(format='%(asctime)s:%(name)s:%(levelname)s:%(funcName)s:%(message)s',
+                            filename='run.log',
+                            encoding='utf-8',
+                            level=logging.INFO)
 
     def get_update_text(self) -> Tuple[str, str, str, str]:
         """
         Returns (curr maint title, from time str, to time str, date)
         """
+        self.log.info(f'getting update text for {self.title}')
         url_fragment = self.content.split(' ')[0]
         image_url = steam_clan_to_url(url_fragment)
 
@@ -186,6 +193,6 @@ HATE_LIST = [
 ]
 
 MAINT_TIME_FILTER = lambda item: 'Scheduled Update Notice' in item['title'] and 'Error' not in item[
-    'title'] and 'Correction' not in item['title']
+    'title'] and 'Correction' not in item['title'] and 'Notice:' not in item['title']
 KIT_FILTER = lambda item: 'New Identity Preview' in item['title'] or 'Walpurgis Night Target Extraction' in item[
     'title'] or 'E.G.O Preview' in item['title']
