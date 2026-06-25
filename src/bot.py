@@ -832,7 +832,7 @@ modes = {e.value for e in RollModeEnum}
 
 def __get_curr_roll_mode(message: discord.Message) -> str:
     guild_id = data['roll mode'][f'{message.guild.id}']
-    if f'{message.channel.category.id}' in guild_id['category']:
+    if message.channel.category and f'{message.channel.category.id}' in guild_id['category']:
         return guild_id['category'][f'{message.channel.category.id}']
     else:
         return guild_id['server']
